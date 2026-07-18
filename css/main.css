@@ -1,0 +1,197 @@
+/* 全局样式重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    touch-action: none;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+}
+
+/* 游戏容器 - 保持16:9比例 */
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 1920px;
+    max-height: 1080px;
+    background: #000;
+    overflow: hidden;
+}
+
+/* Canvas 画布 */
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    -ms-interpolation-mode: nearest-neighbor;
+}
+
+/* 加载覆盖层 */
+#loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #0a1628 0%, #16213e 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease-out;
+}
+
+#loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-content {
+    text-align: center;
+    width: 80%;
+    max-width: 600px;
+}
+
+.loading-logo-container {
+    margin-bottom: 40px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-logo {
+    max-width: 400px;
+    width: 80%;
+    height: auto;
+    image-rendering: pixelated;
+}
+
+.loading-bar-container {
+    width: 100%;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(79, 172, 254, 0.5);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.loading-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    transition: width 0.3s ease-out;
+    box-shadow: 0 0 10px rgba(79, 172, 254, 0.8);
+    border-radius: 10px;
+}
+
+.loading-text {
+    font-size: 18px;
+    color: #4facfe;
+    text-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+}
+
+/* 竖屏旋转提示 */
+#rotate-hint {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 2000;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+}
+
+#rotate-hint .rotate-icon {
+    font-size: 80px;
+    margin-bottom: 30px;
+    animation: rotate 2s ease-in-out infinite;
+}
+
+@keyframes rotate {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+
+#rotate-hint .rotate-text {
+    font-size: 20px;
+    line-height: 1.8;
+    color: #4facfe;
+}
+
+/* 横屏时隐藏旋转提示 */
+@media (orientation: landscape) {
+    #rotate-hint {
+        display: none !important;
+    }
+}
+
+/* 竖屏时显示旋转提示 */
+@media (orientation: portrait) and (max-width: 900px) {
+    #rotate-hint {
+        display: flex;
+    }
+    #mobile-controls {
+        display: none !important;
+    }
+}
+
+/* 响应式字体 */
+@media (max-width: 768px) {
+    .loading-text {
+        font-size: 14px;
+    }
+    #loading-title {
+        font-size: 24px !important;
+    }
+    #rotate-hint .rotate-icon {
+        font-size: 60px;
+    }
+    #rotate-hint .rotate-text {
+        font-size: 16px;
+    }
+}
+
+/* 超宽屏适配 */
+@media (min-aspect-ratio: 16/9) {
+    #gameCanvas {
+        object-fit: contain;
+    }
+}
+
+/* 超窄屏适配 */
+@media (max-aspect-ratio: 16/9) {
+    #gameCanvas {
+        object-fit: contain;
+    }
+}

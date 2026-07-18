@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>卓越工程师的大冒险</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/ui.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- 竖屏旋转提示 -->
+        <div id="rotate-hint">
+            <div class="rotate-icon">📱</div>
+            <div class="rotate-text">请横屏握持手机<br>以获得最佳游戏体验</div>
+        </div>
+        
+        <!-- 移动端虚拟按钮 -->
+        <div id="mobile-controls">
+            <div class="control-group" id="dpad">
+                <button class="control-btn" id="btn-up" data-key="ArrowUp">↑</button>
+                <button class="control-btn" id="btn-left" data-key="ArrowLeft">←</button>
+                <button class="control-btn" id="btn-right" data-key="ArrowRight">→</button>
+                <button class="control-btn" id="btn-down" data-key="ArrowDown">↓</button>
+            </div>
+            <div class="control-group" id="action-buttons">
+                <button class="control-btn action-btn" id="btn-jump" data-key="Space">跳</button>
+                <button class="control-btn action-btn" id="btn-crouch" data-key="KeyC">蹲</button>
+            </div>
+        </div>
+        
+        <!-- 加载进度条 -->
+        <div id="loading-overlay">
+            <div class="loading-content">
+                <div class="loading-logo-container">
+                    <img src="assets/images/ui/logo.png" alt="游戏Logo" class="loading-logo"
+                         onerror="this.style.display='none';document.getElementById('loading-title').style.display='block'">
+                    <h1 id="loading-title" style="display:none;color:#4facfe;font-size:36px;font-family:'Courier New';text-shadow:0 0 20px rgba(79,172,254,0.5);">卓越工程师的大冒险</h1>
+                </div>
+                <div class="loading-bar-container">
+                    <div class="loading-bar" id="loading-bar"></div>
+                </div>
+                <div class="loading-text" id="loading-text">正在加载资源... 0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引擎模块 -->
+    <script src="js/config.js"></script>
+    <script src="js/engine/GameLoop.js"></script>
+    <script src="js/engine/Renderer.js"></script>
+    <script src="js/engine/InputHandler.js"></script>
+    <script src="js/engine/CollisionSystem.js"></script>
+    <script src="js/engine/AudioManager.js"></script>
+    <script src="js/engine/SceneManager.js"></script>
+    <script src="js/engine/ParticleSystem.js"></script>
+    <script src="js/engine/AssetLoader.js"></script>
+    
+    <!-- 实体模块 -->
+    <script src="js/entities/Entity.js"></script>
+    <script src="js/entities/Player.js"></script>
+    <script src="js/entities/Obstacle.js"></script>
+    <script src="js/entities/Collectible.js"></script>
+    <script src="js/entities/Platform.js"></script>
+    
+    <!-- UI模块 -->
+    <script src="js/ui/HUD.js"></script>
+    <script src="js/ui/DialogBox.js"></script>
+    <script src="js/ui/Toast.js"></script>
+    
+    <!-- 场景模块 -->
+    <script src="js/scenes/BootScene.js"></script>
+    <script src="js/scenes/MainMenuScene.js"></script>
+    <script src="js/scenes/CharacterSelectScene.js"></script>
+    <script src="js/scenes/LevelSelectScene.js"></script>
+    <script src="js/scenes/TencentIntroScene.js"></script>
+    <script src="js/scenes/TencentLobbyScene.js"></script>
+    <script src="js/scenes/XPengIntroScene.js"></script>
+    <script src="js/scenes/XPengRunScene.js"></script>
+    <script src="js/scenes/GameOverScene.js"></script>
+    <script src="js/scenes/WinScene.js"></script>
+    
+    <!-- 主入口 -->
+    <script src="js/main.js"></script>
+</body>
+</html>
