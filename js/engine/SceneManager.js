@@ -74,7 +74,14 @@ class SceneManager {
             this.currentScene.exit();
         }
         this.currentSceneName = this.pendingScene;
-        this.currentScene = this.scenes[this.pendingScene];
+        const factory = this.scenes[this.pendingScene];
+        if (!factory) {
+            console.warn(`[SceneManager] 场景 "${this.pendingScene}" 未注册`);
+            this.currentScene = null;
+            this.transitioning = false;
+            return;
+        }
+        this.currentScene = (typeof factory === 'function') ? factory() : factory;
         if (this.currentScene && this.currentScene.enter) {
             this.currentScene.enter(this.pendingData);
         }

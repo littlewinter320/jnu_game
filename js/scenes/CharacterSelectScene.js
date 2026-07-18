@@ -40,12 +40,12 @@ class CharacterSelectScene {
         // 确认
         if (this.input.isJustPressed(CONFIG.KEYS.ENTER) || this.input.isJustPressed(CONFIG.KEYS.SPACE)) {
             this.audio.playSFX('BUTTON_CLICK');
-            this.changeScene('levelSelect', { gender: this.selectedGender });
+            this.changeScene(CONFIG.SCENES.LEVEL_SELECT, { gender: this.selectedGender });
         }
 
         // 返回
         if (this.input.isJustPressed(CONFIG.KEYS.ESC)) {
-            this.changeScene('mainMenu');
+            this.changeScene(CONFIG.SCENES.MAIN_MENU);
         }
     }
 
@@ -96,7 +96,7 @@ class CharacterSelectScene {
     }
 
     _drawCharacterBox(ctx, x, y, w, h, gender, selected) {
-        // 背景
+        ctx.save();
         if (selected) {
             ctx.fillStyle = 'rgba(79, 172, 254, 0.2)';
             ctx.shadowColor = '#4af';
@@ -106,19 +106,23 @@ class CharacterSelectScene {
             ctx.shadowBlur = 0;
         }
         ctx.fillRect(x, y, w, h);
+        ctx.restore();
 
-        // 边框
         ctx.strokeStyle = selected ? '#4af' : '#555';
         ctx.lineWidth = selected ? 4 : 2;
         ctx.strokeRect(x, y, w, h);
 
-        // 角色贴图或占位
-        const imgKey = `${gender.toUpperCase()}_IDLE`;
-        const image = this.renderer.images?.[imgKey];
-        if (image) {
-            ctx.drawImage(image, x + 50, y + 50, w - 100, h - 100);
+        const assets = window.Game?.assets;
+        const animTime = performance.now() / 200;
+        const frameIdx = Math.floor(animTime) % 4;
+        if (assets && assets.getAnimInfo(gender, 'idle')) {
+            const scale = (w - 100) / 80;
+            const drawW = 80 * scale;
+            const drawH = 72 * scale;
+            const drawX = x + (w - drawW) / 2;
+            const drawY = y + (h - drawH) / 2;
+            assets.drawCharacter(ctx, gender, 'idle', drawX, drawY, frameIdx, scale);
         } else {
-            // 占位图形
             ctx.fillStyle = gender === 'male' ? '#4af' : '#f4a';
             ctx.fillRect(x + 100, y + 100, w - 200, h - 200);
             ctx.fillStyle = '#fff';
@@ -128,12 +132,10 @@ class CharacterSelectScene {
             ctx.fillText(gender === 'male' ? '男' : '女', x + w / 2, y + h / 2);
         }
 
-        // 标签
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 32px "Courier New"';
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
         ctx.fillText(gender === 'male' ? '男性工程师' : '女性工程师', x + w / 2, y + h + 40);
-
-        ctx.shadowBlur = 0;
     }
 }

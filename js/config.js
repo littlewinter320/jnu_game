@@ -67,7 +67,6 @@ const CONFIG = {
         BATTERY_SPAWN_INTERVAL: 8     // 电池生成间隔（秒）
     },
 
-    // 粒子系统
     PARTICLES: {
         MAX_COUNT: 200,
         JUMP_COUNT: 8,
@@ -76,7 +75,6 @@ const CONFIG = {
         LOW_STAMINA_COUNT: 3
     },
 
-    // 场景名称
     SCENES: {
         BOOT: 'BOOT',
         MAIN_MENU: 'MAIN_MENU',
@@ -90,137 +88,7 @@ const CONFIG = {
         WIN: 'WIN'
     },
 
-    // 资源路径
     ASSETS: {
-        IMAGES: {
-            // 已有UI素材
-            LOGO: '游戏素材/jnu_game/开始界面/卓越工程师_UI界面素材_像素风/ui_assets_pack/01_游戏Logo_卓越工程师的大冒险.png',
-            BTN_START: '游戏素材/jnu_game/开始界面/卓越工程师_UI界面素材_像素风/ui_assets_pack/02_开始游戏按钮.png',
-            BTN_END: '游戏素材/jnu_game/开始界面/卓越工程师_UI界面素材_像素风/ui_assets_pack/03_结束游戏按钮.png',
-            BTN_HELP: '游戏素材/jnu_game/开始界面/卓越工程师_UI界面素材_像素风/ui_assets_pack/04_操作说明按钮.png',
-            BTN_CREDITS: '游戏素材/jnu_game/开始界面/卓越工程师_UI界面素材_像素风/ui_assets_pack/05_制作人员按钮.png',
-            BTN_SETTINGS: '游戏素材/jnu_game/开始界面/卓越工程师_UI界面素材_像素风/ui_assets_pack/06_设置按钮.png',
-            BG_MAIN: '游戏素材/jnu_game/开始界面/开始界面背景.png',
-
-            // 角色贴图（待用户提供）
-            MALE_IDLE: 'assets/images/characters/male_idle.png',
-            MALE_RUN: 'assets/images/characters/male_run.png',
-            MALE_JUMP: 'assets/images/characters/male_jump.png',
-            MALE_CROUCH: 'assets/images/characters/male_crouch.png',
-            MALE_DEATH: 'assets/images/characters/male_death.png',
-            FEMALE_IDLE: 'assets/images/characters/female_idle.png',
-            FEMALE_RUN: 'assets/images/characters/female_run.png',
-            FEMALE_JUMP: 'assets/images/characters/female_jump.png',
-            FEMALE_CROUCH: 'assets/images/characters/female_crouch.png',
-            FEMALE_DEATH: 'assets/images/characters/female_death.png',
-
-            // 背景贴图（待用户提供）
-            BG_CHAR_SELECT: 'assets/images/backgrounds/bg_character_select.png',
-            BG_LEVEL_SELECT: 'assets/images/backgrounds/bg_level_select.png',
-            BG_TENCENT_LOBBY: 'assets/images/backgrounds/bg_tencent_lobby.png',
-            BG_TENCENT_WECHAT: 'assets/images/backgrounds/bg_tencent_wechat.png',
-            BG_TENCENT_QQ: 'assets/images/backgrounds/bg_tencent_qq.png',
-            BG_TENCENT_GAMES: 'assets/images/backgrounds/bg_tencent_games.png',
-            BG_TENCENT_CLOUD: 'assets/images/backgrounds/bg_tencent_cloud.png',
-            BG_TENCENT_CONTENT: 'assets/images/backgrounds/bg_tencent_content.png',
-            BG_TENCENT_TECH: 'assets/images/backgrounds/bg_tencent_tech.png',
-            BG_TENCENT_REPAIR: 'assets/images/backgrounds/bg_tencent_repair.png',
-            BG_XPENG_STAGE1: 'assets/images/backgrounds/bg_xpeng_stage1.png',
-            BG_XPENG_STAGE2: 'assets/images/backgrounds/bg_xpeng_stage2.png',
-            BG_XPENG_ENDING: 'assets/images/backgrounds/bg_xpeng_ending.png',
-
-            // 道具贴图（待用户提供）
-            PROP_WECHAT: 'assets/images/props/prop_wechat.png',
-            PROP_QQ: 'assets/images/props/prop_qq.png',
-            PROP_GAMES: 'assets/images/props/prop_games.png',
-            PROP_CLOUD: 'assets/images/props/prop_cloud.png',
-            PROP_CONTENT: 'assets/images/props/prop_content.png',
-            PROP_TECH: 'assets/images/props/prop_tech.png',
-            STAMINA_BATTERY: 'assets/images/props/stamina_battery.png',
-
-            // 障碍贴图（待用户提供）
-            OBSTACLE_DIALOG: 'assets/images/obstacles/obstacle_dialog.png',
-            OBSTACLE_EMOJI: 'assets/images/obstacles/obstacle_emoji.png',
-            OBSTACLE_PLATFORM: 'assets/images/obstacles/obstacle_pixel_platform.png',
-            OBSTACLE_DATA_STREAM: 'assets/images/obstacles/obstacle_data_stream.png',
-            OBSTACLE_TIMELINE: 'assets/images/obstacles/obstacle_video_timeline.png',
-            OBSTACLE_GEAR: 'assets/images/obstacles/obstacle_gear.png',
-            OBSTACLE_STEAM: 'assets/images/obstacles/obstacle_steam_pipe.png',
-            OBSTACLE_LOW: 'assets/images/obstacles/obstacle_low_barrier.png',
-            OBSTACLE_HIGH: 'assets/images/obstacles/obstacle_high_wall.png',
-            OBSTACLE_DATA_WALL: 'assets/images/obstacles/obstacle_data_wall.png',
-            OBSTACLE_GAP: 'assets/images/obstacles/obstacle_gap.png',
-            OBSTACLE_ROBOT: 'assets/images/obstacles/obstacle_robot.png',
-            OBSTACLE_VORTEX: 'assets/images/obstacles/obstacle_vortex.png',
-            OBSTACLE_LASER_FENCE: 'assets/images/obstacles/obstacle_laser_fence.png',
-            LASER_GROUND: 'assets/images/obstacles/laser_ground.png',
-            LASER_AIR: 'assets/images/obstacles/laser_air.png',
-            LASER_CROSS: 'assets/images/obstacles/laser_cross.png',
-            LASER_TRACKING: 'assets/images/obstacles/laser_tracking.png',
-            LASER_ROTATING: 'assets/images/obstacles/laser_rotating.png',
-            OBSTACLE_CABLE: 'assets/images/obstacles/obstacle_cable.png',
-            OBSTACLE_CHARGING: 'assets/images/obstacles/obstacle_charging_pile.png',
-
-            // UI贴图（待用户提供）
-            UI_MALE: 'assets/images/ui/ui_gender_male.png',
-            UI_FEMALE: 'assets/images/ui/ui_gender_female.png',
-            UI_STAMINA_BG: 'assets/images/ui/ui_stamina_bar_bg.png',
-            UI_STAMINA_GREEN: 'assets/images/ui/ui_stamina_bar_fill_green.png',
-            UI_STAMINA_YELLOW: 'assets/images/ui/ui_stamina_bar_fill_yellow.png',
-            UI_STAMINA_ORANGE: 'assets/images/ui/ui_stamina_bar_fill_orange.png',
-            UI_STAMINA_RED: 'assets/images/ui/ui_stamina_bar_fill_red.png',
-            UI_PROP_EMPTY: 'assets/images/ui/ui_prop_slot_empty.png',
-            UI_PROP_FILLED: 'assets/images/ui/ui_prop_slot_filled.png',
-            UI_CARD_TENCENT: 'assets/images/ui/ui_card_tencent.png',
-            UI_CARD_XPENG: 'assets/images/ui/ui_card_xpeng.png',
-            UI_CARD_BACK: 'assets/images/ui/ui_card_back.png',
-            UI_PENGUIN_BROKEN: 'assets/images/ui/ui_penguin_broken.png',
-            UI_PENGUIN_FIXED: 'assets/images/ui/ui_penguin_fixed.png',
-            UI_XPENG_CAR: 'assets/images/ui/ui_xpeng_car.png',
-            UI_DIALOG_BOX: 'assets/images/ui/ui_dialog_box.png'
-        },
-        SOUNDS: {
-            BGM: {
-                MAIN_MENU: 'assets/sounds/bgm/bgm_main_menu.mp3',
-                TENCENT: 'assets/sounds/bgm/bgm_tencent.mp3',
-                TENCENT_PUZZLE: 'assets/sounds/bgm/bgm_tencent_puzzle.mp3',
-                TENCENT_ENDING: 'assets/sounds/bgm/bgm_tencent_ending.mp3',
-                XPENG_STAGE1: 'assets/sounds/bgm/bgm_xpeng_stage1.mp3',
-                XPENG_STAGE1_LOW: 'assets/sounds/bgm/bgm_xpeng_stage1_low_stamina.mp3',
-                XPENG_STAGE2: 'assets/sounds/bgm/bgm_xpeng_stage2.mp3',
-                XPENG_ENDING: 'assets/sounds/bgm/bgm_xpeng_ending.mp3'
-            },
-            SFX: {
-                BUTTON_CLICK: 'assets/sounds/sfx/sfx_button_click.mp3',
-                BUTTON_HOVER: 'assets/sounds/sfx/sfx_button_hover.mp3',
-                JUMP: 'assets/sounds/sfx/sfx_jump.mp3',
-                DOUBLE_JUMP: 'assets/sounds/sfx/sfx_double_jump.mp3',
-                CROUCH: 'assets/sounds/sfx/sfx_crouch.mp3',
-                LAND: 'assets/sounds/sfx/sfx_land.mp3',
-                COLLECT_PROP: 'assets/sounds/sfx/sfx_collect_prop.mp3',
-                COLLECT_BATTERY: 'assets/sounds/sfx/sfx_collect_battery.mp3',
-                PUZZLE_SOLVE: 'assets/sounds/sfx/sfx_puzzle_solve.mp3',
-                PUZZLE_WRONG: 'assets/sounds/sfx/sfx_puzzle_wrong.mp3',
-                LASER_HIT: 'assets/sounds/sfx/sfx_laser_hit.mp3',
-                OBSTACLE_HIT: 'assets/sounds/sfx/sfx_obstacle_hit.mp3',
-                STAMINA_LOW: 'assets/sounds/sfx/sfx_stamina_low.mp3',
-                STAMINA_EMPTY: 'assets/sounds/sfx/sfx_stamina_empty.mp3',
-                DEATH: 'assets/sounds/sfx/sfx_death.mp3',
-                PENGUIN_REPAIR: 'assets/sounds/sfx/sfx_penguin_repair.mp3',
-                PENGUIN_ACTIVATE: 'assets/sounds/sfx/sfx_penguin_activate.mp3',
-                CAR_ENGINE: 'assets/sounds/sfx/sfx_car_engine_start.mp3',
-                CAR_DRIVE: 'assets/sounds/sfx/sfx_car_drive.mp3',
-                THUNDER: 'assets/sounds/sfx/sfx_thunder.mp3',
-                RAIN: 'assets/sounds/sfx/sfx_rain.mp3',
-                TRANSITION: 'assets/sounds/sfx/sfx_transition.mp3',
-                SPEED_UP: 'assets/sounds/sfx/sfx_speed_up.mp3',
-                LASER_WARNING: 'assets/sounds/sfx/sfx_laser_warning.mp3',
-                LASER_CHARGE: 'assets/sounds/sfx/sfx_laser_charge.mp3',
-                GAME_OVER: 'assets/sounds/sfx/sfx_game_over.mp3',
-                GAME_CLEAR: 'assets/sounds/sfx/sfx_game_clear.mp3',
-                DATA_WALL: 'assets/sounds/sfx/sfx_data_wall.mp3',
-                PENGUIN_BOW: 'assets/sounds/sfx/sfx_penguin_bow.mp3'
-            }
-        }
+        SOUNDS: { BGM: {}, SFX: {} }
     }
 };

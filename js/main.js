@@ -40,9 +40,8 @@
         renderer._lastDt = dt;
 
         sceneMgr.update(dt);
-        renderer.beginFrame(dt);
         sceneMgr.render();
-        renderer.endFrame();
+        input.endFrame();
 
         requestAnimationFrame(gameLoop);
     }
@@ -60,60 +59,41 @@
     // 3. 启动主循环，进入 BOOT 场景
 
     const KEY_MAP = {
-        // UI (小写→大写映射)
-        'logo': 'LOGO', 'btn_start': 'BTN_START', 'btn_end': 'BTN_END',
-        'btn_help': 'BTN_HELP', 'btn_credits': 'BTN_CREDITS', 'btn_settings': 'BTN_SETTINGS',
-        'start_illustration': 'START_ILLUSTRATION',
-        'ui_gender_male': 'UI_GENDER_MALE', 'ui_gender_female': 'UI_GENDER_FEMALE',
-        'ui_stamina_bar_bg': 'UI_STAMINA_BAR_BG', 'ui_stamina_bar_fill_green': 'UI_STAMINA_BAR_FILL_GREEN',
-        'ui_stamina_bar_fill_yellow': 'UI_STAMINA_BAR_FILL_YELLOW', 'ui_stamina_bar_fill_orange': 'UI_STAMINA_BAR_FILL_ORANGE',
-        'ui_stamina_bar_fill_red': 'UI_STAMINA_BAR_FILL_RED',
-        'ui_prop_slot_empty': 'UI_PROP_SLOT_EMPTY', 'ui_prop_slot_filled': 'UI_PROP_SLOT_FILLED',
-        'ui_card_tencent': 'UI_CARD_TENCENT', 'ui_card_xpeng': 'UI_CARD_XPENG', 'ui_card_back': 'UI_CARD_BACK',
-        'ui_penguin_broken': 'UI_PENGUIN_BROKEN', 'ui_penguin_fixed': 'UI_PENGUIN_FIXED',
-        'ui_xpeng_car': 'UI_XPENG_CAR', 'ui_dialog_box': 'UI_DIALOG_BOX',
-        'btn_restart': 'BTN_RESTART', 'btn_menu': 'BTN_MENU', 'btn_continue': 'BTN_CONTINUE',
-        'lock_icon': 'LOCK_ICON', 'star_empty': 'STAR_EMPTY', 'star_filled': 'STAR_FILLED',
-        // 背景
-        'bg_main_menu': 'BG_MAIN_MENU', 'bg_character_select': 'BG_CHARACTER_SELECT',
-        'bg_level_select': 'BG_LEVEL_SELECT', 'bg_tencent_lobby': 'BG_TENCENT_LOBBY',
-        'bg_tencent_wechat': 'BG_TENCENT_WECHAT', 'bg_tencent_qq': 'BG_TENCENT_QQ',
-        'bg_tencent_games': 'BG_TENCENT_GAMES', 'bg_tencent_cloud': 'BG_TENCENT_CLOUD',
-        'bg_tencent_content': 'BG_TENCENT_CONTENT', 'bg_tencent_tech': 'BG_TENCENT_TECH',
-        'bg_tencent_repair': 'BG_TENCENT_REPAIR', 'bg_xpeng_stage1': 'BG_XPENG_STAGE1',
-        'bg_xpeng_stage2': 'BG_XPENG_STAGE2', 'bg_xpeng_ending': 'BG_XPENG_ENDING',
-        // 角色
-        'male_idle': 'MALE_IDLE', 'male_run': 'MALE_RUN', 'male_jump': 'MALE_JUMP',
-        'male_crouch': 'MALE_CROUCH', 'male_death': 'MALE_DEATH',
-        'female_idle': 'FEMALE_IDLE', 'female_run': 'FEMALE_RUN', 'female_jump': 'FEMALE_JUMP',
-        'female_crouch': 'FEMALE_CROUCH', 'female_death': 'FEMALE_DEATH',
-        // 道具
-        'prop_wechat': 'PROP_WECHAT', 'prop_qq': 'PROP_QQ', 'prop_games': 'PROP_GAMES',
-        'prop_cloud': 'PROP_CLOUD', 'prop_content': 'PROP_CONTENT', 'prop_tech': 'PROP_TECH',
-        'stamina_battery': 'STAMINA_BATTERY'
+        'LOGO': 'LOGO',
+        'BTN_START': 'BTN_START', 'BTN_END': 'BTN_END',
+        'BTN_HELP': 'BTN_HELP', 'BTN_CREDITS': 'BTN_CREDITS',
+        'BTN_SETTINGS': 'BTN_SETTINGS',
+        'BG_MAIN_MENU': 'BG_MAIN_MENU', 'BG_MAIN': 'BG_MAIN_MENU'
     };
 
     function syncImagesToRenderer() {
-        // 把 assets 中所有加载好的图片，按 KEY_MAP 映射到 renderer.images[大写键名]
         renderer.images = renderer.images || {};
-        for (const [lowerKey, upperKey] of Object.entries(KEY_MAP)) {
-            const cat = assets.images;
-            // 查找分类
-            for (const section of ['ui', 'backgrounds', 'characters', 'props']) {
-                if (cat[section] && cat[section][lowerKey]) {
-                    const entry = cat[section][lowerKey];
-                    if (entry.image) renderer.images[upperKey] = entry.image;
-                    break;
+        // 直接同步 ui/backgrounds 下所有已加载图片
+        for (const section of ['ui', 'backgrounds', 'props', 'puzzles', 'obstacles']) {
+            const items = assets.images[section];
+            if (!items) continue;
+            for (const [key, entry] of Object.entries(items)) {
+                if (entry.image) renderer.images[key] = entry.image;
+            }
+        }
+        // 别名映射（兼容旧代码中的键名）
+        const aliases = { 'BG_MAIN_MENU': ['BG_MAIN'] };
+        for (const [src, dsts] of Object.entries(aliases)) {
+            if (renderer.images[src]) {
+                for (const dst of dsts) {
+                    if (!renderer.images[dst]) renderer.images[dst] = renderer.images[src];
                 }
             }
         }
     }
 
     // -------------------- 显示加载进度 --------------------
-    const loaderEl = document.getElementById('loader');
-    const progressText = loaderEl ? loaderEl.querySelector('.loader-text') : null;
+    const loaderEl = document.getElementById('loading-overlay');
+    const progressBar = document.getElementById('loading-bar');
+    const progressText = document.getElementById('loading-text');
     function showProgress(p) {
-        if (progressText) progressText.textContent = `加载素材... ${Math.round(p * 100)}%`;
+        if (progressBar) progressBar.style.width = `${Math.round(p * 100)}%`;
+        if (progressText) progressText.textContent = `正在加载资源... ${Math.round(p * 100)}%`;
     }
 
     assets.loadAll(showProgress).then(() => {

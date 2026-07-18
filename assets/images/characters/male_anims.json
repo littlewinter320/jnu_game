@@ -1,0 +1,105 @@
+{
+  "spriteSheet": "male_spritesheet.png",
+  "frameWidth": 80,
+  "frameHeight": 72,
+  "animations": {
+    "male_idle": {
+      "row": 0,
+      "y": 0,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_run_left": {
+      "row": 1,
+      "y": 75,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_run_right": {
+      "row": 2,
+      "y": 151,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_jump": {
+      "row": 3,
+      "y": 227,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_airborne": {
+      "row": 4,
+      "y": 303,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_landing": {
+      "row": 5,
+      "y": 378,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_crouch": {
+      "row": 6,
+      "y": 454,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_crouch_walk": {
+      "row": 7,
+      "y": 530,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_hurt": {
+      "row": 8,
+      "y": 606,
+      "frames": 5,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_knockback": {
+      "row": 9,
+      "y": 682,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_death": {
+      "row": 10,
+      "y": 757,
+      "frames": 5,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_pickup": {
+      "row": 11,
+      "y": 833,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_operate": {
+      "row": 12,
+      "y": 909,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    },
+    "male_victory": {
+      "row": 13,
+      "y": 985,
+      "frames": 4,
+      "frameWidth": 80,
+      "frameHeight": 72
+    }
+  }
+}
