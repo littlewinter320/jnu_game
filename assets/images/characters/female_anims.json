@@ -1,105 +1,444 @@
 {
-  "spriteSheet": "female_spritesheet.png",
-  "frameWidth": 80,
-  "frameHeight": 72,
-  "animations": {
-    "female_idle": {
-      "row": 0,
-      "y": 0,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_run_left": {
-      "row": 1,
-      "y": 75,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_run_right": {
-      "row": 2,
-      "y": 150,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_jump": {
-      "row": 3,
-      "y": 225,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_airborne": {
-      "row": 4,
-      "y": 301,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_landing": {
-      "row": 5,
-      "y": 376,
-      "frames": 3,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_crouch": {
-      "row": 6,
-      "y": 451,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_crouch_walk": {
-      "row": 7,
-      "y": 527,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_hurt": {
-      "row": 8,
-      "y": 602,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_knockback": {
-      "row": 9,
-      "y": 677,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_death": {
-      "row": 10,
-      "y": 752,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_pickup": {
-      "row": 11,
-      "y": 828,
-      "frames": 3,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_operate": {
-      "row": 12,
-      "y": 903,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    },
-    "female_victory": {
-      "row": 13,
-      "y": 978,
-      "frames": 4,
-      "frameWidth": 80,
-      "frameHeight": 72
-    }
+  "idle": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 4,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 4,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 4,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 4,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.15,
+    "loop": true
+  },
+  "run_left": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 84,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 84,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 84,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 84,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": true
+  },
+  "run_right": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 164,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 164,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 164,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 164,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": true
+  },
+  "jump_start": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 244,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 244,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 244,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 244,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
+  },
+  "airborne": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 324,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 324,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 324,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 324,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
+  },
+  "landing": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 404,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 404,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 404,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 404,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
+  },
+  "crouch": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 484,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 484,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 484,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 484,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": true
+  },
+  "crouch_walk": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 564,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 564,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 564,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 564,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": true
+  },
+  "hurt": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 644,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 644,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 644,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 644,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
+  },
+  "knockback": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 724,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 724,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 724,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 724,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
+  },
+  "death": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 804,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 804,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 804,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 804,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
+  },
+  "pickup": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 884,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 884,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 884,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
+  },
+  "operate": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 964,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 964,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 964,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 964,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": true
+  },
+  "victory": {
+    "frameWidth": 112,
+    "frameHeight": 80,
+    "frames": [
+      {
+        "x": 4,
+        "y": 1044,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 116,
+        "y": 1044,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 228,
+        "y": 1044,
+        "w": 112,
+        "h": 80
+      },
+      {
+        "x": 340,
+        "y": 1044,
+        "w": 112,
+        "h": 80
+      }
+    ],
+    "animSpeed": 0.12,
+    "loop": false
   }
 }

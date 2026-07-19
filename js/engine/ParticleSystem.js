@@ -1,14 +1,13 @@
-// 粒子特效系统
 class ParticleSystem {
     constructor() {
         this.particles = [];
     }
 
-    // 发射粒子
     emit(x, y, options = {}) {
         const {
             count = 10,
             color = '#fff',
+            colors = null,
             speedMin = 50,
             speedMax = 200,
             angleMin = 0,
@@ -18,7 +17,7 @@ class ParticleSystem {
             lifeMin = 0.3,
             lifeMax = 1.0,
             gravity = 0,
-            shape = 'circle'  // circle, square, star
+            shape = 'circle'
         } = options;
 
         for (let i = 0; i < count; i++) {
@@ -26,6 +25,7 @@ class ParticleSystem {
             const speed = speedMin + Math.random() * (speedMax - speedMin);
             const life = lifeMin + Math.random() * (lifeMax - lifeMin);
             const size = sizeMin + Math.random() * (sizeMax - sizeMin);
+            const pColor = colors ? colors[Math.floor(Math.random() * colors.length)] : color;
 
             this.particles.push({
                 x, y,
@@ -34,20 +34,31 @@ class ParticleSystem {
                 size,
                 life,
                 maxLife: life,
-                color,
+                color: pColor,
                 gravity,
                 shape,
                 alpha: 1
             });
         }
 
-        // 限制粒子总数
         if (this.particles.length > CONFIG.PARTICLES.MAX_COUNT) {
             this.particles.splice(0, this.particles.length - CONFIG.PARTICLES.MAX_COUNT);
         }
     }
 
-    // 跳跃尘土
+    emitDust(x, y) {
+        this.emit(x, y, {
+            count: 8,
+            color: '#aaa',
+            speedMin: 40, speedMax: 100,
+            angleMin: Math.PI, angleMax: Math.PI * 2,
+            sizeMin: 2, sizeMax: 5,
+            lifeMin: 0.15, lifeMax: 0.4,
+            gravity: 150,
+            shape: 'circle'
+        });
+    }
+
     emitJump(x, y) {
         this.emit(x, y, {
             count: CONFIG.PARTICLES.JUMP_COUNT,
@@ -61,7 +72,6 @@ class ParticleSystem {
         });
     }
 
-    // 收集道具星光
     emitCollect(x, y, color = '#ffd700') {
         this.emit(x, y, {
             count: CONFIG.PARTICLES.COLLECT_COUNT,
@@ -74,7 +84,6 @@ class ParticleSystem {
         });
     }
 
-    // 爆炸
     emitExplosion(x, y) {
         this.emit(x, y, {
             count: CONFIG.PARTICLES.EXPLOSION_COUNT,
@@ -85,7 +94,6 @@ class ParticleSystem {
             gravity: 300,
             shape: 'square'
         });
-        // 二次黄色粒子
         this.emit(x, y, {
             count: CONFIG.PARTICLES.EXPLOSION_COUNT / 2,
             color: '#ff0',
@@ -97,7 +105,27 @@ class ParticleSystem {
         });
     }
 
-    // 体力低时边缘红色闪烁粒子
+    emitSpeedLines(y) {
+        const x = CONFIG.CANVAS_WIDTH + 50;
+        const speed = 800 + Math.random() * 600;
+        this.particles.push({
+            x, y,
+            vx: -speed,
+            vy: 0,
+            size: 1 + Math.random() * 2,
+            life: 0.3 + Math.random() * 0.3,
+            maxLife: 0.6,
+            color: 'rgba(255,255,255,0.4)',
+            gravity: 0,
+            shape: 'line',
+            len: 40 + Math.random() * 60,
+            alpha: 1
+        });
+        if (this.particles.length > CONFIG.PARTICLES.MAX_COUNT) {
+            this.particles.splice(0, this.particles.length - CONFIG.PARTICLES.MAX_COUNT);
+        }
+    }
+
     emitLowStamina() {
         const side = Math.floor(Math.random() * 4);
         let x, y;
@@ -149,6 +177,14 @@ class ParticleSystem {
                     break;
                 case 'star':
                     this._drawStar(ctx, p.x, p.y, p.size);
+                    break;
+                case 'line':
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = p.size;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x - (p.len || 50), p.y);
+                    ctx.stroke();
                     break;
             }
             ctx.restore();

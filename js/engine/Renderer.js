@@ -21,9 +21,8 @@ class Renderer {
     }
 
     _resize() {
-        const container = this.canvas.parentElement;
-        const cw = container.clientWidth;
-        const ch = container.clientHeight;
+        const cw = window.innerWidth;
+        const ch = window.innerHeight;
         const targetRatio = CONFIG.CANVAS_WIDTH / CONFIG.CANVAS_HEIGHT;
         const windowRatio = cw / ch;
 
@@ -38,6 +37,9 @@ class Renderer {
 
         this.canvas.style.width = `${width}px`;
         this.canvas.style.height = `${height}px`;
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.left = `${(cw - width) / 2}px`;
+        this.canvas.style.top = `${(ch - height) / 2}px`;
         this.scaleX = CONFIG.CANVAS_WIDTH / width;
         this.scaleY = CONFIG.CANVAS_HEIGHT / height;
     }

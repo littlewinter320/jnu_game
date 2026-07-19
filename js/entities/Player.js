@@ -1,4 +1,3 @@
-// 玩家角色
 class Player extends Entity {
     constructor(x, y, gender = 'male') {
         super(x, y, CONFIG.PLAYER.WIDTH, CONFIG.PLAYER.HEIGHT);
@@ -16,6 +15,23 @@ class Player extends Entity {
         this.animSpeed = 0.15;
 
         this.invincibleTimer = 0;
+        this.pickupTimer = 0;
+        this.hurtTimer = 0;
+
+        this._refreshCharInfo();
+    }
+
+    _refreshCharInfo() {
+        this._charInfo = this._getCharInfo(this.gender);
+    }
+
+    _getCharInfo(gender) {
+        const info = window.Game?.assets?.getAnimInfo?.(gender, 'idle');
+        const fw = info?.frameWidth || 92;
+        const fh = info?.frameHeight || 79;
+        // 让渲染高度接近碰撞盒高度(110)，sprite略大一些更自然
+        const scale = CONFIG.PLAYER.HEIGHT / fh * 1.15;
+        return { w: fw * scale, h: fh * scale, fw, fh, scale };
     }
 
     jump() {
@@ -40,10 +56,10 @@ class Player extends Entity {
         this.crouching = active;
         if (active && this.onGround) {
             this.state = 'crouch';
-            this.h = CONFIG.PLAYER.HEIGHT * 0.6;
+            this.h = this._charInfo.h * 0.6;
             this.animFrame = 0;
         } else if (!active && this.state === 'crouch') {
-            this.h = CONFIG.PLAYER.HEIGHT;
+            this.h = this._charInfo.h;
             this.state = this.onGround ? 'idle' : 'airborne';
         }
     }
@@ -59,6 +75,7 @@ class Player extends Entity {
         this.vy = 0;
         this.state = 'landing';
         this.animFrame = 0;
+        this.h = this._charInfo.h;
     }
 
     takeDamage(amount = 10) {
@@ -66,6 +83,7 @@ class Player extends Entity {
         this.stamina -= amount;
         if (this.stamina < 0) this.stamina = 0;
         this.invincibleTimer = 1.0;
+        this.hurtTimer = 0.4;
         this.state = 'hurt';
         this.animFrame = 0;
         return true;
@@ -75,22 +93,34 @@ class Player extends Entity {
         this.state = 'death';
         this.animFrame = 0;
         this.vx = 0;
+        this.vy = 0;
     }
 
     recoverStamina(amount) {
         this.stamina = Math.min(this.stamina + amount, CONFIG.PLAYER.MAX_STAMINA);
     }
 
+    playPickup() {
+        this.state = 'pickup';
+        this.animFrame = 0;
+        this.pickupTimer = 0.5;
+        this.vx = 0;
+    }
+
+    playVictory() {
+        this.state = 'victory';
+        this.animFrame = 0;
+        this.vx = 0;
+    }
+
     _resolveAnimName() {
-        const g = this.gender;
-        const moving = Math.abs(this.vx) > 10;
         switch (this.state) {
             case 'idle':     return 'idle';
             case 'run':      return this.facingRight ? 'run_right' : 'run_left';
-            case 'jump':     return 'jump';
+            case 'jump':     return 'jump_start';
             case 'airborne': return 'airborne';
             case 'landing':  return 'landing';
-            case 'crouch':   return moving ? 'crouch_walk' : 'crouch';
+            case 'crouch':   return this.crouching && Math.abs(this.vx) > 10 ? 'crouch_walk' : 'crouch';
             case 'hurt':     return 'hurt';
             case 'knockback':return 'knockback';
             case 'death':    return 'death';
@@ -105,14 +135,19 @@ class Player extends Entity {
         super.update(dt);
 
         if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
+        if (this.hurtTimer > 0) this.hurtTimer -= dt;
+        if (this.pickupTimer > 0) {
+            this.pickupTimer -= dt;
+            if (this.pickupTimer <= 0) this.state = 'idle';
+        }
 
         const moving = Math.abs(this.vx) > 10;
 
-        // 状态自动机：根据物理状态修正动画
-        if (this.state !== 'death' && this.state !== 'hurt' && this.state !== 'victory' && this.state !== 'operate' && this.state !== 'pickup') {
+        if (this.state !== 'death' && this.state !== 'hurt' && this.state !== 'victory' &&
+            this.state !== 'operate' && this.state !== 'pickup') {
             if (!this.onGround) {
                 if (this.vy < 0) {
-                    this.state = (this.state === 'jump' && this.animFrame < 2) ? 'jump' : 'airborne';
+                    this.state = (this.state === 'jump') ? 'jump' : 'airborne';
                 } else {
                     this.state = 'airborne';
                 }
@@ -120,8 +155,8 @@ class Player extends Entity {
                 this.state = 'landing';
                 this.animFrame = 0;
             } else if (this.state === 'landing') {
-                const info = window.Game?.assets?.getAnimInfo(this.gender, 'landing');
-                const fc = info?.frames || 3;
+                const info = window.Game?.assets?.getAnimInfo?.(this.gender, 'landing');
+                const fc = info?.frames?.length || 4;
                 if (this.animFrame >= fc - 1) {
                     this.state = this.crouching ? 'crouch' : (moving ? 'run' : 'idle');
                     this.animFrame = 0;
@@ -133,29 +168,72 @@ class Player extends Entity {
             }
         }
 
-        // 获取当前动画信息
         const animName = this._resolveAnimName();
-        const info = window.Game?.assets?.getAnimInfo(this.gender, animName);
-        const frameCount = info?.frames || 4;
+        const info = window.Game?.assets?.getAnimInfo?.(this.gender, animName);
+        const frameCount = info?.frames?.length || 4;
+        const loop = info?.loop !== false;
 
-        // 动画速度
         switch (this.state) {
             case 'idle':     this.animSpeed = 0.2;  break;
-            case 'run':      this.animSpeed = 0.1;  break;
-            case 'jump':     this.animSpeed = 0.12; break;
-            case 'airborne': this.animSpeed = 0.2;  break;
-            case 'landing':  this.animSpeed = 0.1;  break;
-            case 'crouch':   this.animSpeed = moving ? 0.12 : 0.3; break;
-            case 'hurt':     this.animSpeed = 0.15; break;
-            case 'death':    this.animSpeed = 0.2;  break;
-            default:         this.animSpeed = 0.15; break;
+            case 'run':      this.animSpeed = 0.08; break;
+            case 'jump':     this.animSpeed = 0.1;  break;
+            case 'airborne': this.animSpeed = 0.15; break;
+            case 'landing':  this.animSpeed = 0.08; break;
+            case 'crouch':   this.animSpeed = moving ? 0.1 : 0.25; break;
+            case 'hurt':     this.animSpeed = 0.12; break;
+            case 'death':    this.animSpeed = 0.15; break;
+            case 'pickup':   this.animSpeed = 0.12; break;
+            case 'victory':  this.animSpeed = 0.15; break;
+            default:         this.animSpeed = 0.12; break;
         }
 
         this.animTimer += dt;
         if (this.animTimer >= this.animSpeed) {
             this.animTimer = 0;
             this.animFrame++;
-            if (this.state === 'death' || this.state === 'hurt' || this.state === 'pickup' || this.state === 'operate') {
+            if (!loop) {
+                if (this.animFrame >= frameCount) this.animFrame = frameCount - 1;
+            } else {
+                if (this.animFrame >= frameCount) this.animFrame = 0;
+            }
+        }
+
+        this.prevState = this.state;
+    }
+
+    updateAnimation(dt) {
+        if (this.invincibleTimer > 0) this.invincibleTimer -= dt;
+        if (this.hurtTimer > 0) this.hurtTimer -= dt;
+        if (this.pickupTimer > 0) {
+            this.pickupTimer -= dt;
+            if (this.pickupTimer <= 0) this.state = 'idle';
+        }
+
+        const animName = this._resolveAnimName();
+        const info = window.Game?.assets?.getAnimInfo?.(this.gender, animName);
+        const frameCount = info?.frames?.length || 4;
+        const loop = info?.loop !== false;
+
+        const moving = Math.abs(this.vx) > 10;
+        switch (this.state) {
+            case 'idle':     this.animSpeed = 0.2;  break;
+            case 'run':      this.animSpeed = 0.08; break;
+            case 'jump':     this.animSpeed = 0.1;  break;
+            case 'airborne': this.animSpeed = 0.15; break;
+            case 'landing':  this.animSpeed = 0.08; break;
+            case 'crouch':   this.animSpeed = moving ? 0.1 : 0.25; break;
+            case 'hurt':     this.animSpeed = 0.12; break;
+            case 'death':    this.animSpeed = 0.15; break;
+            case 'pickup':   this.animSpeed = 0.12; break;
+            case 'victory':  this.animSpeed = 0.15; break;
+            default:         this.animSpeed = 0.12; break;
+        }
+
+        this.animTimer += dt;
+        if (this.animTimer >= this.animSpeed) {
+            this.animTimer = 0;
+            this.animFrame++;
+            if (!loop) {
                 if (this.animFrame >= frameCount) this.animFrame = frameCount - 1;
             } else {
                 if (this.animFrame >= frameCount) this.animFrame = 0;
@@ -167,28 +245,32 @@ class Player extends Entity {
 
     render(renderer) {
         if (!this.visible) return;
-        if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer * 10) % 2 === 0) return;
+        if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer * 12) % 2 === 0) return;
 
         const ctx = renderer.ctx;
         const assets = window.Game?.assets;
         const animName = this._resolveAnimName();
+        const info = assets?.getAnimInfo?.(this.gender, animName);
 
-        // 角色精灵尺寸 80x72，需要缩放到PLAYER.WIDTH/HEIGHT
-        const scale = this.h / 72;
-        const drawW = 80 * scale;
-        const drawH = 72 * scale;
+        const scale = this._charInfo.scale;
+        const fw = info?.frameWidth || this._charInfo.fw;
+        const fh = info?.frameHeight || this._charInfo.fh;
+        const drawW = fw * scale;
+        const drawH = fh * scale;
+
+        const crouchOffset = this.crouching && this.onGround ? drawH * 0.3 : 0;
         const drawX = this.x + (this.w - drawW) / 2;
-        const drawY = this.y + this.h - drawH;
+        const drawY = this.y + this.h - drawH + crouchOffset;
 
-        // 对于run_left/run_right，sprite已经自带方向了；其他动画根据facingRight镜像
         let flipX = false;
-        let finalAnim = animName;
         if (animName !== 'run_left' && animName !== 'run_right') {
             flipX = !this.facingRight;
+        } else if (animName === 'run_left') {
+            flipX = true;
         }
 
         if (assets && assets.charAnims?.[this.gender]?.[animName]) {
-            assets.drawCharacter(ctx, this.gender, finalAnim, drawX, drawY, this.animFrame, scale, flipX);
+            assets.drawCharacter(ctx, this.gender, animName, drawX, drawY, this.animFrame, scale, flipX);
         } else {
             const color = this.gender === 'male' ? '#4af' : '#f4a';
             renderer.drawRect(this.x, this.y, this.w, this.h, color);

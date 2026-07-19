@@ -27,6 +27,7 @@
     sceneMgr.register('TENCENT_LOBBY',   () => new TencentLobbyScene(renderer, input, audio, particles, sceneMgr.changeScene.bind(sceneMgr)));
     sceneMgr.register('XPENG_INTRO',     () => new XPengIntroScene(renderer, input, audio, particles, sceneMgr.changeScene.bind(sceneMgr)));
     sceneMgr.register('XPENG_RUN',       () => new XPengRunScene(renderer, input, audio, particles, sceneMgr.changeScene.bind(sceneMgr)));
+    sceneMgr.register('CREDITS',         () => new CreditsScene(renderer, input, audio, particles, sceneMgr.changeScene.bind(sceneMgr)));
     sceneMgr.register('GAME_OVER',       () => new GameOverScene(renderer, input, audio, particles, sceneMgr.changeScene.bind(sceneMgr)));
     sceneMgr.register('WIN',             () => new WinScene(renderer, input, audio, particles, sceneMgr.changeScene.bind(sceneMgr)));
 
@@ -69,7 +70,7 @@
     function syncImagesToRenderer() {
         renderer.images = renderer.images || {};
         // 直接同步 ui/backgrounds 下所有已加载图片
-        for (const section of ['ui', 'backgrounds', 'props', 'puzzles', 'obstacles']) {
+        for (const section of ['ui', 'backgrounds', 'props', 'puzzles', 'obstacles', 'enemies', 'tiles']) {
             const items = assets.images[section];
             if (!items) continue;
             for (const [key, entry] of Object.entries(items)) {

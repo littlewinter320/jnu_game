@@ -7,6 +7,7 @@ class AssetLoader {
             backgrounds: {},
             props: {},
             obstacles: {},
+            enemies: {},
             ui: {},
             puzzles: {},
             tiles: {}
@@ -71,7 +72,7 @@ class AssetLoader {
                     });
                 };
 
-                for (const cat of ['ui', 'backgrounds', 'props', 'puzzles', 'obstacles', 'tiles']) {
+                for (const cat of ['ui', 'backgrounds', 'props', 'puzzles', 'obstacles', 'enemies', 'tiles']) {
                     const items = manifest[cat];
                     if (!items) continue;
                     for (const [key, meta] of Object.entries(items)) {
@@ -129,7 +130,8 @@ class AssetLoader {
                     this.animBgs[key] = {
                         frames: frameImgs,
                         fps,
-                        frameDuration: 1 / fps
+                        frameDuration: 1 / fps,
+                        pingPong: !!meta.pingPong
                     };
                     resolve();
                 }
@@ -154,13 +156,15 @@ class AssetLoader {
                         naturalHeight: img.naturalHeight, isSpriteSheet: true,
                         animData: animMeta, placeholder: false
                     };
-                    for (const [animName, ainfo] of Object.entries(animMeta.animations || {})) {
-                        this.charAnims[gender][animName.replace(gender + '_', '')] = {
+                    for (const [animName, ainfo] of Object.entries(animMeta)) {
+                        if (!ainfo || !ainfo.frames || !Array.isArray(ainfo.frames)) continue;
+                        this.charAnims[gender][animName] = {
                             image: img,
-                            y: ainfo.y,
                             frameWidth: ainfo.frameWidth,
                             frameHeight: ainfo.frameHeight,
-                            frames: ainfo.frames
+                            frames: ainfo.frames,
+                            animSpeed: ainfo.animSpeed || 0.12,
+                            loop: ainfo.loop !== false
                         };
                     }
                     resolve();
@@ -203,9 +207,13 @@ class AssetLoader {
             this._drawPlaceholder(ctx, x, y, 64, 80, `${gender}_${animName}`);
             return;
         }
-        const fi = frameIndex % anim.frames;
-        const tw = anim.frameWidth * scale;
-        const th = anim.frameHeight * scale;
+        const frames = anim.frames;
+        const fi = frameIndex % frames.length;
+        const frame = frames[fi];
+        const fw = frame.w;
+        const fh = frame.h;
+        const tw = fw * scale;
+        const th = fh * scale;
         const dx = Math.round(x);
         const dy = Math.round(y);
 
@@ -215,13 +223,13 @@ class AssetLoader {
             ctx.scale(-1, 1);
             ctx.drawImage(
                 anim.image,
-                fi * anim.frameWidth, anim.y, anim.frameWidth, anim.frameHeight,
+                frame.x, frame.y, fw, fh,
                 0, 0, tw, th
             );
         } else {
             ctx.drawImage(
                 anim.image,
-                fi * anim.frameWidth, anim.y, anim.frameWidth, anim.frameHeight,
+                frame.x, frame.y, fw, fh,
                 dx, dy, tw, th
             );
         }
@@ -243,7 +251,15 @@ class AssetLoader {
         const h = CONFIG.CANVAS_HEIGHT;
         if (entry.isAnimated && this.animBgs[key]) {
             const ab = this.animBgs[key];
-            const idx = Math.floor(time / ab.frameDuration) % ab.frames.length;
+            const n = ab.frames.length;
+            let idx;
+            if (ab.pingPong && n > 1) {
+                const cycle = n * 2 - 2;
+                const pos = Math.floor(time / ab.frameDuration) % cycle;
+                idx = pos < n ? pos : cycle - pos;
+            } else {
+                idx = Math.floor(time / ab.frameDuration) % n;
+            }
             const img = ab.frames[idx] || entry.image;
             if (img) {
                 ctx.drawImage(img, 0, 0, w, h);
@@ -264,8 +280,14 @@ class AssetLoader {
         ctx.drawImage(entry.image, Math.round(x), Math.round(y), Math.round(tw), Math.round(th));
     }
 
+    drawUIRaw(ctx, key, x, y) {
+        const entry = this.images.ui?.[key];
+        if (!entry || entry.placeholder || !entry.image) return;
+        ctx.drawImage(entry.image, Math.round(x), Math.round(y));
+    }
+
     getSprite(key) {
-        for (const cat of ['ui', 'backgrounds', 'characters', 'props', 'obstacles', 'puzzles', 'tiles']) {
+        for (const cat of ['ui', 'backgrounds', 'characters', 'props', 'obstacles', 'enemies', 'puzzles', 'tiles']) {
             const e = this.images[cat]?.[key];
             if (e && !e.placeholder && e.image) return e;
         }
@@ -274,6 +296,139 @@ class AssetLoader {
 
     getAnimInfo(gender, animName) {
         return this.charAnims[gender]?.[animName] || null;
+    }
+
+    drawTile(ctx, key, tileIndex, x, y, tileSize = 64) {
+        const entry = this.images.tiles?.[key];
+        if (!entry || entry.placeholder || !entry.image) {
+            ctx.fillStyle = '#555';
+            ctx.fillRect(x, y, tileSize, tileSize);
+            ctx.strokeStyle = '#777';
+            ctx.strokeRect(x, y, tileSize, tileSize);
+            return;
+        }
+        const cols = Math.floor(entry.image.naturalWidth / tileSize);
+        const col = tileIndex % cols;
+        const row = Math.floor(tileIndex / cols);
+        ctx.drawImage(
+            entry.image,
+            col * tileSize, row * tileSize, tileSize, tileSize,
+            Math.round(x), Math.round(y), tileSize, tileSize
+        );
+    }
+
+    drawTilePlatform(ctx, x, y, widthInPixels, type = 'platform') {
+        const entry = this.images.tiles?.PLATFORM_TILES;
+        if (!entry || entry.placeholder || !entry.image) {
+            this._drawFallbackPlatform(ctx, x, y, widthInPixels, type);
+            return;
+        }
+        const img = entry.image;
+
+        const PLATFORM_DEF = {
+            platform: {
+                left:   { sx: 1224, sy: 72, sw: 132, sh: 50 },
+                mid:    { sx: 1380, sy: 72, sw: 164, sh: 50 },
+                right:  { sx: 1710, sy: 72, sw: 110, sh: 50 },
+                single: { sx: 1890, sy: 72, sw: 100, sh: 50 }
+            },
+            ground: {
+                left:   { sx: 20,  sy: 70, sw: 132, sh: 96 },
+                mid:    { sx: 160, sy: 70, sw: 200, sh: 96 },
+                right:  { sx: 920, sy: 70, sw: 128, sh: 96 }
+            },
+            semisolid: {
+                left:   { sx: 1224, sy: 292, sw: 140, sh: 34 },
+                mid:    { sx: 1400, sy: 292, sw: 180, sh: 34 },
+                right:  { sx: 2040, sy: 292, sw: 160, sh: 34 }
+            }
+        };
+
+        const def = PLATFORM_DEF[type] || PLATFORM_DEF.platform;
+        const h = def.left.sh;
+        const midW = def.mid.sw;
+
+        if (widthInPixels <= def.single?.sw + 20 && def.single) {
+            const s = def.single;
+            const dw = widthInPixels;
+            ctx.drawImage(img, s.sx, s.sy, s.sw, s.sh, Math.round(x), Math.round(y), Math.round(dw), h);
+            return;
+        }
+
+        const leftW = def.left.sw;
+        const rightW = def.right.sw;
+        const leftEnd = x + leftW;
+        const rightStart = x + widthInPixels - rightW;
+
+        ctx.drawImage(img, def.left.sx, def.left.sy, def.left.sw, def.left.sh,
+            Math.round(x), Math.round(y), leftW, h);
+
+        const midStart = leftEnd;
+        const midEnd = rightStart;
+        const midTotalW = midEnd - midStart;
+        if (midTotalW > 0) {
+            let cx = midStart;
+            while (cx < midEnd) {
+                const cw = Math.min(midW, midEnd - cx);
+                ctx.drawImage(img, def.mid.sx, def.mid.sy, def.mid.sw, def.mid.sh,
+                    Math.round(cx), Math.round(y), Math.round(cw), h);
+                cx += midW;
+            }
+        }
+
+        ctx.drawImage(img, def.right.sx, def.right.sy, def.right.sw, def.right.sh,
+            Math.round(rightStart), Math.round(y), rightW, h);
+    }
+
+    drawPlatformBuilding(ctx, x, y, w, h, style = 'tech') {
+        this._drawFallbackPlatform(ctx, x, y, w, 'building', h);
+    }
+
+    _drawFallbackPlatform(ctx, x, y, w, type, customH) {
+        const h = customH || (type === 'ground' ? 48 : 24);
+        const bodyY = y + (type === 'ground' ? 0 : 0);
+
+        const grad = ctx.createLinearGradient(x, y, x, y + h);
+        if (type === 'ground') {
+            grad.addColorStop(0, '#5a7a9a');
+            grad.addColorStop(0.15, '#3d5a78');
+            grad.addColorStop(0.3, '#2a4060');
+            grad.addColorStop(1, '#1a2a42');
+        } else {
+            grad.addColorStop(0, '#4a6a8a');
+            grad.addColorStop(0.3, '#355070');
+            grad.addColorStop(1, '#253a55');
+        }
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, bodyY, w, h);
+
+        ctx.fillStyle = '#7ab8ff';
+        ctx.fillRect(x, y, w, 3);
+        ctx.fillStyle = 'rgba(122,184,255,0.3)';
+        ctx.fillRect(x, y + 3, w, 2);
+
+        ctx.strokeStyle = '#1a2d45';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, bodyY + 0.5, w - 1, h - 1);
+
+        ctx.fillStyle = 'rgba(0,200,255,0.6)';
+        for (let bx = x + 10; bx < x + w - 10; bx += 30) {
+            const glowSize = 3 + Math.sin(Date.now() / 400 + bx) * 1;
+            ctx.beginPath();
+            ctx.arc(bx, y + h - 6, glowSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (type === 'building') {
+            ctx.fillStyle = 'rgba(100,180,255,0.15)';
+            for (let wy = y + h; wy < y + (customH || 200); wy += 32) {
+                for (let wx = x + 8; wx < x + w - 8; wx += 24) {
+                    if ((wx + wy) % 48 < 24) {
+                        ctx.fillRect(wx, wy, 12, 16);
+                    }
+                }
+            }
+        }
     }
 
     _drawPlaceholder(ctx, x, y, w, h, label) {

@@ -13,26 +13,6 @@
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
 
-        <!-- 竖屏旋转提示 -->
-        <div id="rotate-hint">
-            <div class="rotate-icon">📱</div>
-            <div class="rotate-text">请横屏握持手机<br>以获得最佳游戏体验</div>
-        </div>
-        
-        <!-- 移动端虚拟按钮 -->
-        <div id="mobile-controls">
-            <div class="control-group" id="dpad">
-                <button class="control-btn" id="btn-up" data-key="ArrowUp">↑</button>
-                <button class="control-btn" id="btn-left" data-key="ArrowLeft">←</button>
-                <button class="control-btn" id="btn-right" data-key="ArrowRight">→</button>
-                <button class="control-btn" id="btn-down" data-key="ArrowDown">↓</button>
-            </div>
-            <div class="control-group" id="action-buttons">
-                <button class="control-btn action-btn" id="btn-jump" data-key="Space">跳</button>
-                <button class="control-btn action-btn" id="btn-crouch" data-key="KeyC">蹲</button>
-            </div>
-        </div>
-        
         <!-- 加载进度条 -->
         <div id="loading-overlay">
             <div class="loading-content">
@@ -66,6 +46,7 @@
     <script src="js/entities/Obstacle.js"></script>
     <script src="js/entities/Collectible.js"></script>
     <script src="js/entities/Platform.js"></script>
+    <script src="js/entities/Virus.js"></script>
     
     <!-- UI模块 -->
     <script src="js/ui/HUD.js"></script>
@@ -81,6 +62,7 @@
     <script src="js/scenes/TencentLobbyScene.js"></script>
     <script src="js/scenes/XPengIntroScene.js"></script>
     <script src="js/scenes/XPengRunScene.js"></script>
+    <script src="js/scenes/CreditsScene.js"></script>
     <script src="js/scenes/GameOverScene.js"></script>
     <script src="js/scenes/WinScene.js"></script>
     
