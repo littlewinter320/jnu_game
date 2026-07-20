@@ -28,7 +28,7 @@
         "h": 79
       }
     ],
-    "animSpeed": 0.15,
+    "animSpeed": 0.12,
     "loop": true
   },
   "run_left": {

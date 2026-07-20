@@ -9,6 +9,7 @@ class XPengRunScene {
         this.player = null;
         this.obstacles = [];
         this.batteries = [];
+        this.shieldItems = [];
         this.speed = CONFIG.XPENG.BASE_SPEED;
         this.stamina = CONFIG.PLAYER.MAX_STAMINA;
         this.collectedBatteries = 0;
@@ -22,9 +23,10 @@ class XPengRunScene {
         this.playerY = 0;
         this.jumpTimer = 0;
         this.jumpStartY = 0;
-        this.crouchTimer = 0;
+        this.crouching = false;
         this._obstacleTimer = 0;
         this._batteryTimer = 3;
+        this._shieldItemTimer = 10;
         this._speedTier = 0;
         this._heartbeatTimer = 0;
         this._distanceTravelled = 0;
@@ -32,6 +34,11 @@ class XPengRunScene {
         this._bgBlend = 0;
         this._bgIdx = 0;
         this._roadMarkOffset = 0;
+        this.deathReason = null;
+        this._targetLane = -1;
+        this._xpengCar = null;
+        this._xpengCarPhase = 'waiting';
+        this._victoryParticlesEmitted = false;
     }
 
     enter(data) {
@@ -39,6 +46,7 @@ class XPengRunScene {
         this.gender = data?.gender || 'male';
         this.obstacles = [];
         this.batteries = [];
+        this.shieldItems = [];
         this.speed = CONFIG.XPENG.BASE_SPEED;
         this.stamina = CONFIG.PLAYER.MAX_STAMINA;
         this.collectedBatteries = 0;
@@ -49,9 +57,10 @@ class XPengRunScene {
         this.targetLane = 0;
         this.laneSwitchProgress = 1;
         this.jumpTimer = 0;
-        this.crouchTimer = 0;
+        this.crouching = false;
         this._obstacleTimer = 3.5;
         this._batteryTimer = 3;
+        this._shieldItemTimer = 10;
         this._speedTier = 0;
         this._heartbeatTimer = 0;
         this._distanceTravelled = 0;
@@ -59,6 +68,11 @@ class XPengRunScene {
         this._bgBlend = 0;
         this._bgIdx = 0;
         this._roadMarkOffset = 0;
+        this.deathReason = null;
+        this._targetLane = -1;
+        this._xpengCar = null;
+        this._xpengCarPhase = 'waiting';
+        this._victoryParticlesEmitted = false;
         this.particles.clear();
 
         const px = CONFIG.XPENG.PLAYER_X;
@@ -82,7 +96,7 @@ class XPengRunScene {
     }
 
     _getPlayerHitbox() {
-        const h = this.crouchTimer > 0 ? 55 : (this.jumpTimer > 0 ? 80 : 105);
+        const h = this.crouching ? 55 : (this.jumpTimer > 0 ? 80 : 105);
         const w = 55;
         return {
             x: this.player.x + 18,
@@ -92,11 +106,72 @@ class XPengRunScene {
         };
     }
 
+    _spawnObstacle() {
+        const laneIdx = Math.floor(Math.random() * CONFIG.XPENG.LANES.length);
+        const lane = CONFIG.XPENG.LANES[laneIdx];
+
+        const types = [
+            { key: 'OBS_LOW_FOLDERS', w: 85, h: 52, yOff: -52, avoidBy: 'jump' },
+            { key: 'OBS_LOW_BLOCKS', w: 90, h: 40, yOff: -40, avoidBy: 'jump' },
+            { key: 'OBS_CABLE_RED', w: 65, h: 130, yOff: -200, avoidBy: 'crouch' },
+            { key: 'OBS_LASER_SPHERE', w: 80, h: 90, yOff: -170, avoidBy: 'crouch' },
+            { key: 'OBS_CHARGER_DAMAGED', w: 90, h: 145, yOff: -145, avoidBy: 'switch' }
+        ];
+
+        const o = types[Math.floor(Math.random() * types.length)];
+        this.obstacles.push({
+            x: CONFIG.CANVAS_WIDTH + 50,
+            y: lane.y + o.yOff,
+            w: o.w, h: o.h,
+            spriteKey: o.key, avoidBy: o.avoidBy,
+            lane: laneIdx, hit: false
+        });
+    }
+
+    _spawnBattery() {
+        const laneIdx = Math.floor(Math.random() * CONFIG.XPENG.LANES.length);
+        const lane = CONFIG.XPENG.LANES[laneIdx];
+        const yOffsets = [-100, -160, -220];
+        this.batteries.push({
+            x: CONFIG.CANVAS_WIDTH + 50,
+            y: lane.y + yOffsets[Math.floor(Math.random() * yOffsets.length)],
+            w: 48, h: 60,
+            lane: laneIdx, rot: 0
+        });
+    }
+
+    _spawnShield() {
+        const laneIdx = Math.floor(Math.random() * CONFIG.XPENG.LANES.length);
+        const lane = CONFIG.XPENG.LANES[laneIdx];
+        const yOffsets = [-100, -160, -220];
+        this.shieldItems.push({
+            x: CONFIG.CANVAS_WIDTH + 50,
+            y: lane.y + yOffsets[Math.floor(Math.random() * yOffsets.length)],
+            w: 40, h: 40,
+            type: 'shield',
+            lane: laneIdx,
+            floatPhase: Math.random() * Math.PI * 2
+        });
+    }
+
     update(dt) {
         if (this.gameOver || this.victory) {
             this.endTimer += dt;
+            if (this.victory && !this._victoryParticlesEmitted) {
+                this._victoryParticlesEmitted = true;
+                for (let i = 0; i < 50; i++) {
+                    setTimeout(() => {
+                        this.particles.emitCollect(
+                            200 + Math.random() * (CONFIG.CANVAS_WIDTH - 400),
+                            200 + Math.random() * 600
+                        );
+                    }, i * 50);
+                }
+            }
+            this.player.update(dt);
             this.particles.update(dt);
-            if (this.endTimer > 2.0) {
+            const waitTime = this.victory ? 2.5 : 2.0;
+            if (this.endTimer > waitTime) {
                 if (this.victory) {
                     this.changeScene(CONFIG.SCENES.WIN, {
                         gender: this.gender, level: 'xpeng',
@@ -106,7 +181,7 @@ class XPengRunScene {
                     });
                 } else {
                     this.changeScene(CONFIG.SCENES.GAME_OVER, {
-                        gender: this.gender, level: 'xpeng', reason: 'stamina'
+                        gender: this.gender, level: 'xpeng', reason: this.deathReason || 'stamina'
                     });
                 }
             }
@@ -114,9 +189,10 @@ class XPengRunScene {
         }
 
         this._time += dt;
-        this._distanceTravelled += this.speed * dt;
-        this._bgScrollOffset = (this._bgScrollOffset + this.speed * dt * 0.2) % 2000;
-        this._roadMarkOffset = (this._roadMarkOffset + this.speed * dt * 1.5) % 80;
+        const effectiveSpeed = this.crouching ? this.speed * CONFIG.XPENG.CROUCH_SPEED_MULTIPLIER : this.speed;
+        this._distanceTravelled += effectiveSpeed * dt;
+        this._bgScrollOffset = (this._bgScrollOffset + effectiveSpeed * dt * 0.2) % 2000;
+        this._roadMarkOffset = (this._roadMarkOffset + effectiveSpeed * dt * 1.5) % 80;
 
         const bgDurations = [50];
         if (this._time > bgDurations[this._bgIdx] && this._bgIdx < CONFIG.XPENG.BG_KEYS.length - 1) {
@@ -138,21 +214,28 @@ class XPengRunScene {
         }
 
         if (this.input.isJustPressed(CONFIG.KEYS.JUMP) || this.input.isJustPressed(CONFIG.KEYS.W) || this.input.isJustPressed(CONFIG.KEYS.UP)) {
-            if (this.jumpTimer <= 0 && this.crouchTimer <= 0 && this.laneSwitchProgress >= 0.9) {
+            if (this.jumpTimer <= 0 && !this.crouching && this.laneSwitchProgress >= 0.9) {
                 this.jumpTimer = CONFIG.XPENG.JUMP_TIME;
                 this.jumpStartY = this.playerY;
                 this.audio.playSFX('JUMP');
                 this.particles.emitDust(p.x + p.w/2, this.playerY + p.h);
                 this.stamina -= CONFIG.XPENG.STAMINA_JUMP_COST;
+                this.crouching = false;
+                p.crouch(false);
             }
         }
 
-        if (this.input.isJustPressed(CONFIG.KEYS.S) || this.input.isJustPressed(CONFIG.KEYS.DOWN)) {
-            if (this.jumpTimer <= 0 && this.crouchTimer <= 0) {
-                this.crouchTimer = CONFIG.XPENG.CROUCH_DURATION;
-                this.audio.playSFX('LAND');
-                p.crouch(true);
-            }
+        const wasCrouching = this.crouching;
+        const newCrouching = (this.input.isDown(CONFIG.KEYS.S) || this.input.isDown(CONFIG.KEYS.DOWN)) && this.jumpTimer <= 0;
+        if (newCrouching && !wasCrouching) {
+            this.audio.playSFX('LAND');
+            p.crouch(true);
+        } else if (!newCrouching && wasCrouching) {
+            p.crouch(false);
+        }
+        this.crouching = newCrouching;
+        if (this.crouching) {
+            this.stamina -= CONFIG.XPENG.STAMINA_CROUCH_COST * dt;
         }
 
         if ((this.input.isJustPressed(CONFIG.KEYS.A) || this.input.isJustPressed(CONFIG.KEYS.LEFT)) && this.laneSwitchProgress >= 0.9 && this.jumpTimer <= 0) {
@@ -190,31 +273,27 @@ class XPengRunScene {
             if (this.jumpTimer <= 0) {
                 this.audio.playSFX('LAND');
                 this.particles.emitDust(p.x + p.w/2, targetY + p.h);
-            }
-        }
-
-        if (this.crouchTimer > 0) {
-            this.crouchTimer -= dt;
-            if (this.crouchTimer < 0) {
-                this.crouchTimer = 0;
-                p.crouch(false);
+                this.crouching = (this.input.isDown(CONFIG.KEYS.S) || this.input.isDown(CONFIG.KEYS.DOWN));
+                if (this.crouching) {
+                    p.crouch(true);
+                }
             }
         }
 
         this.playerY += (targetY - this.playerY) * Math.min(1, dt * 15);
         p.y = this.playerY;
-        p.vy = 0;
         p.onGround = this.jumpTimer <= 0;
 
         if (this.jumpTimer > 0) {
-            p.state = 'jump';
-            p.crouching = false;
-        } else if (this.crouchTimer > 0) {
-            p.state = 'crouch';
-            p.crouching = true;
+            const jt = 1 - (this.jumpTimer / CONFIG.XPENG.JUMP_TIME);
+            p.vy = jt < 0.5 ? -400 : 400;
+            p.vx = this.crouching ? this.speed * CONFIG.XPENG.CROUCH_SPEED_MULTIPLIER : this.speed;
+        } else if (this.crouching) {
+            p.vy = 0;
+            p.vx = this.speed * CONFIG.XPENG.CROUCH_SPEED_MULTIPLIER;
         } else {
-            p.state = 'run';
-            p.crouching = false;
+            p.vy = 0;
+            p.vx = this.speed;
         }
         p.facingRight = true;
 
@@ -233,9 +312,13 @@ class XPengRunScene {
         if (this._obstacleTimer <= 0) {
             this._spawnObstacle();
             const speedFactor = this.speed / CONFIG.XPENG.BASE_SPEED;
+            const timeTiers = Math.floor(this._time / CONFIG.XPENG.DIFFICULTY_INTERVAL);
+            const difficultyFactor = Math.pow(1 - CONFIG.XPENG.DIFFICULTY_INCREASE, timeTiers);
             const isEarlyPhase = this._time < CONFIG.XPENG.EARLY_PHASE_DURATION;
-            const minGap = (isEarlyPhase ? CONFIG.XPENG.OBSTACLE_SPAWN_MIN_EARLY : CONFIG.XPENG.OBSTACLE_SPAWN_MIN) / speedFactor;
-            const maxGap = (isEarlyPhase ? CONFIG.XPENG.OBSTACLE_SPAWN_MAX_EARLY : CONFIG.XPENG.OBSTACLE_SPAWN_MAX) / speedFactor;
+            const isFinalMinute = this._time >= (CONFIG.XPENG.DURATION - 60);
+            const finalMinuteFactor = isFinalMinute ? 1.1 : 1.0; // 降低10%生成频率
+            const minGap = ((isEarlyPhase ? CONFIG.XPENG.OBSTACLE_SPAWN_MIN_EARLY : CONFIG.XPENG.OBSTACLE_SPAWN_MIN) / speedFactor) * difficultyFactor * finalMinuteFactor;
+            const maxGap = ((isEarlyPhase ? CONFIG.XPENG.OBSTACLE_SPAWN_MAX_EARLY : CONFIG.XPENG.OBSTACLE_SPAWN_MAX) / speedFactor) * difficultyFactor * finalMinuteFactor;
             this._obstacleTimer = minGap + Math.random() * (maxGap - minGap);
         }
 
@@ -245,7 +328,69 @@ class XPengRunScene {
             this._batteryTimer = CONFIG.XPENG.BATTERY_SPAWN_MIN + Math.random() * (CONFIG.XPENG.BATTERY_SPAWN_MAX - CONFIG.XPENG.BATTERY_SPAWN_MIN);
         }
 
-        const moveAmount = this.speed * dt;
+        this._shieldItemTimer -= dt;
+        if (this._shieldItemTimer <= 0) {
+            this._spawnShield();
+            this._shieldItemTimer = 8 + Math.random() * 4;
+        }
+
+        const timeLeft = CONFIG.XPENG.DURATION - this._time;
+        
+        if (timeLeft <= 10 && this._xpengCarPhase === 'waiting') {
+            if (this._targetLane === -1) {
+                this._targetLane = Math.floor(Math.random() * CONFIG.XPENG.LANES.length);
+            }
+            this._xpengCarPhase = 'warning';
+        }
+
+        if (timeLeft <= 0 && this._xpengCarPhase === 'warning') {
+            this._xpengCarPhase = 'arriving';
+            const targetLane = CONFIG.XPENG.LANES[this._targetLane];
+            this._xpengCar = {
+                x: CONFIG.CANVAS_WIDTH + 100,
+                y: targetLane.y - 100,
+                w: 200,
+                h: 120,
+                lane: this._targetLane,
+                speed: this.speed * 1.2,
+                passed: false
+            };
+        }
+
+        if (this._xpengCarPhase === 'arriving' && this._xpengCar) {
+            this._xpengCar.x -= this._xpengCar.speed * dt;
+            const hb = this._getPlayerHitbox();
+            const carHb = { x: this._xpengCar.x, y: this._xpengCar.y, w: this._xpengCar.w, h: this._xpengCar.h };
+            
+            if (CollisionSystem.aabb(hb, carHb)) {
+                if (this.currentLane === this._targetLane) {
+                    this.victory = true;
+                    this.endTimer = 0;
+                    this.audio.playSFX('VICTORY');
+                    p.playVictory();
+                    this._xpengCarPhase = 'victory';
+                } else {
+                    this.gameOver = true;
+                    this.endTimer = 0;
+                    this.deathReason = 'missed_xpeng';
+                    this.audio.playSFX('DEATH');
+                    p.die();
+                    this.particles.emitExplosion(p.x + p.w/2, p.y + p.h/2);
+                    this._xpengCarPhase = 'failed';
+                }
+            }
+            
+            if (this._xpengCar.x + this._xpengCar.w < -100 && !this.victory && !this.gameOver) {
+                this.gameOver = true;
+                this.endTimer = 0;
+                this.deathReason = 'missed_xpeng';
+                this.audio.playSFX('DEATH');
+                p.die();
+                this._xpengCarPhase = 'failed';
+            }
+        }
+
+        const moveAmount = effectiveSpeed * dt;
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             const obs = this.obstacles[i];
             obs.x -= moveAmount;
@@ -253,17 +398,24 @@ class XPengRunScene {
                 this.obstacles.splice(i, 1);
                 continue;
             }
-            if (!obs.hit && p.invincibleTimer <= 0) {
+            if (!obs.hit) {
                 const hb = this._getPlayerHitbox();
                 if (CollisionSystem.aabb(hb, obs)) {
                     if (obs.avoidBy === 'jump' && this.jumpTimer > 0) continue;
-                    if (obs.avoidBy === 'crouch' && this.crouchTimer > 0) continue;
-                    obs.hit = true;
-                    this.stamina -= CONFIG.XPENG.DAMAGE_OBSTACLE;
-                    this.audio.playSFX('HURT');
-                    this.particles.emitExplosion(hb.x + hb.w/2, hb.y + hb.h/2);
-                    this.renderer.shake(10, 0.3);
-                    p.takeDamage(0);
+                    if (obs.avoidBy === 'crouch' && this.crouching) continue;
+                    
+                    if (p.blockDamage()) {
+                        obs.hit = true;
+                        this.particles.emitExplosion(obs.x + obs.w/2, obs.y + obs.h/2);
+                        this.audio.playSFX('KILL');
+                    } else if (p.invincibleTimer <= 0) {
+                        obs.hit = true;
+                        this.stamina -= CONFIG.XPENG.DAMAGE_OBSTACLE;
+                        this.audio.playSFX('HURT');
+                        this.particles.emitExplosion(hb.x + hb.w/2, hb.y + hb.h/2);
+                        this.renderer.shake(10, 0.3);
+                        p.takeDamage(0);
+                    }
                 }
             }
         }
@@ -286,21 +438,36 @@ class XPengRunScene {
             }
         }
 
+        for (let i = this.shieldItems.length - 1; i >= 0; i--) {
+            const si = this.shieldItems[i];
+            si.x -= moveAmount;
+            if (si.x + si.w < -50) {
+                this.shieldItems.splice(i, 1);
+                continue;
+            }
+            const hb = this._getPlayerHitbox();
+            if (CollisionSystem.aabb(hb, si)) {
+                this.shieldItems.splice(i, 1);
+                this.player.activateShield('xpeng', CONFIG.XPENG.SHIELD_DURATION);
+                this.audio.playSFX('SHIELD_PICKUP');
+                this.particles.emit(si.x + si.w/2, si.y + si.h/2, {
+                    count: 20, spreadX: 150, spreadY: 150, life: 0.6, size: 4,
+                    colors: ['#00ddff', '#88eeff', '#4facfe'], shape: 'circle'
+                });
+            }
+        }
+
         if (Math.random() < 0.2 * (this.speed / CONFIG.XPENG.BASE_SPEED)) {
             this.particles.emitSpeedLines(Math.random() * CONFIG.CANVAS_HEIGHT);
         }
 
         if (this.stamina <= 0 && !this.gameOver) {
             this.gameOver = true;
-            this.audio.playSFX('DIE');
+            this.endTimer = 0;
+            this.deathReason = 'stamina';
+            this.audio.playSFX('DEATH');
             p.die();
             this.particles.emitExplosion(p.x + p.w/2, p.y + p.h/2);
-        }
-
-        if (this._time >= CONFIG.XPENG.DURATION && !this.victory && !this.gameOver) {
-            this.victory = true;
-            this.audio.playSFX('VICTORY');
-            p.playVictory();
         }
 
         if (this.input.isJustPressed(CONFIG.KEYS.ESC)) {
@@ -308,42 +475,10 @@ class XPengRunScene {
             this.changeScene(CONFIG.SCENES.MAIN_MENU);
         }
 
-        p.updateAnimation(dt);
+        p.updateAnim(dt);
+        p.x = CONFIG.XPENG.PLAYER_X;
+        p.y = this.playerY;
         this.particles.update(dt);
-    }
-
-    _spawnObstacle() {
-        const laneIdx = Math.floor(Math.random() * CONFIG.XPENG.LANES.length);
-        const lane = CONFIG.XPENG.LANES[laneIdx];
-
-        const types = [
-            { key: 'OBS_LOW_FOLDERS', w: 85, h: 52, yOff: -52, avoidBy: 'jump' },
-            { key: 'OBS_LOW_BLOCKS', w: 90, h: 40, yOff: -40, avoidBy: 'jump' },
-            { key: 'OBS_CABLE_RED', w: 65, h: 130, yOff: -200, avoidBy: 'crouch' },
-            { key: 'OBS_LASER_SPHERE', w: 80, h: 90, yOff: -170, avoidBy: 'crouch' },
-            { key: 'OBS_CHARGER_DAMAGED', w: 90, h: 145, yOff: -145, avoidBy: 'switch' }
-        ];
-
-        const o = types[Math.floor(Math.random() * types.length)];
-        this.obstacles.push({
-            x: CONFIG.CANVAS_WIDTH + 50,
-            y: lane.y + o.yOff,
-            w: o.w, h: o.h,
-            spriteKey: o.key, avoidBy: o.avoidBy,
-            lane: laneIdx, hit: false
-        });
-    }
-
-    _spawnBattery() {
-        const laneIdx = Math.floor(Math.random() * CONFIG.XPENG.LANES.length);
-        const lane = CONFIG.XPENG.LANES[laneIdx];
-        const yOffsets = [-100, -160, -220];
-        this.batteries.push({
-            x: CONFIG.CANVAS_WIDTH + 50,
-            y: lane.y + yOffsets[Math.floor(Math.random() * yOffsets.length)],
-            w: 48, h: 60,
-            lane: laneIdx, rot: 0
-        });
     }
 
     render() {
@@ -380,16 +515,6 @@ class XPengRunScene {
             }
         }
 
-        const car = assets.getSprite('UI_XPENG_CAR');
-        if (car && car.image) {
-            const carX = w - 350 + Math.sin(this._time * 0.5) * 5;
-            const carY = CONFIG.XPENG.GROUND_Y - 100;
-            ctx.save();
-            ctx.globalAlpha = 0.35;
-            ctx.drawImage(car.image, carX, carY, 320, 170);
-            ctx.restore();
-        }
-
         const gy = CONFIG.XPENG.GROUND_Y;
         const roadGrad = ctx.createLinearGradient(0, 500, 0, gy + 50);
         roadGrad.addColorStop(0, 'rgba(20,20,40,0)');
@@ -402,12 +527,23 @@ class XPengRunScene {
             const lane = CONFIG.XPENG.LANES[li];
             const ly = lane.y + lane.h;
             const isActive = this.currentLane === li;
+            const isTarget = (this._xpengCarPhase === 'warning' || this._xpengCarPhase === 'arriving') && li === this._targetLane;
+            const blink = Math.sin(this._time * 8) > 0;
 
             ctx.fillStyle = `rgba(50,50,80,${0.5 + li*0.1})`;
             ctx.fillRect(0, ly - 6, w, 10);
 
-            ctx.strokeStyle = isActive ? 'rgba(255,180,0,0.5)' : `rgba(255,140,0,${0.12 + li*0.08})`;
-            ctx.lineWidth = isActive ? 3 : (2 + li * 0.5);
+            let lineColor;
+            if (isTarget && blink) {
+                lineColor = 'rgba(0,255,100,0.8)';
+            } else if (isActive) {
+                lineColor = 'rgba(255,180,0,0.5)';
+            } else {
+                lineColor = `rgba(255,140,0,${0.12 + li*0.08})`;
+            }
+            
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = isTarget ? (blink ? 4 : 3) : (isActive ? 3 : (2 + li * 0.5));
             ctx.setLineDash([25, 20]);
             ctx.lineDashOffset = -this._roadMarkOffset;
             ctx.beginPath();
@@ -416,11 +552,11 @@ class XPengRunScene {
             ctx.stroke();
             ctx.setLineDash([]);
 
-            if (isActive) {
+            if (isActive || isTarget) {
                 ctx.save();
-                ctx.shadowColor = '#ffb400';
+                ctx.shadowColor = isTarget ? '#00ff66' : '#ffb400';
                 ctx.shadowBlur = 15;
-                ctx.strokeStyle = 'rgba(255,180,0,0.6)';
+                ctx.strokeStyle = isTarget ? (blink ? 'rgba(0,255,100,0.7)' : 'rgba(0,255,100,0.4)') : 'rgba(255,180,0,0.6)';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([15, 10]);
                 ctx.lineDashOffset = -this._roadMarkOffset * 1.2;
@@ -463,6 +599,58 @@ class XPengRunScene {
             ctx.restore();
         }
 
+        for (const si of this.shieldItems) {
+            const floatY = Math.sin(this._time * 2.5 + si.floatPhase) * 10;
+            const drawX = si.x;
+            const drawY = si.y + floatY;
+            ctx.save();
+            const pulse = 0.7 + Math.sin(this._time * 4) * 0.3;
+            ctx.shadowColor = '#00ddff';
+            ctx.shadowBlur = 20 * pulse;
+            ctx.fillStyle = 'rgba(0,120,200,0.9)';
+            ctx.beginPath();
+            ctx.arc(drawX + si.w/2, drawY + si.h/2, si.w/2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#88eeff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(drawX + si.w/2 - 4, drawY + 8, 8, si.h - 16);
+            ctx.fillRect(drawX + 10, drawY + si.h/2 - 4, si.w - 20, 8);
+            ctx.restore();
+        }
+
+        if (this._xpengCar && (this._xpengCarPhase === 'arriving' || this._xpengCarPhase === 'victory' || this._xpengCarPhase === 'failed')) {
+            const car = assets.getSprite('UI_XPENG_CAR');
+            if (car && car.image) {
+                ctx.drawImage(car.image, this._xpengCar.x, this._xpengCar.y, this._xpengCar.w, this._xpengCar.h);
+            } else {
+                ctx.save();
+                ctx.fillStyle = '#1a73e8';
+                ctx.fillRect(this._xpengCar.x, this._xpengCar.y + 20, this._xpengCar.w - 20, this._xpengCar.h - 40);
+                ctx.fillStyle = '#0d47a1';
+                ctx.beginPath();
+                ctx.moveTo(this._xpengCar.x + 30, this._xpengCar.y + 20);
+                ctx.lineTo(this._xpengCar.x + 60, this._xpengCar.y);
+                ctx.lineTo(this._xpengCar.x + this._xpengCar.w - 50, this._xpengCar.y);
+                ctx.lineTo(this._xpengCar.x + this._xpengCar.w - 20, this._xpengCar.y + 20);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = 'rgba(150,220,255,0.6)';
+                ctx.fillRect(this._xpengCar.x + 70, this._xpengCar.y + 10, this._xpengCar.w - 120, 25);
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(this._xpengCar.x + 40, this._xpengCar.y + this._xpengCar.h - 25, 18, 0, Math.PI*2);
+                ctx.arc(this._xpengCar.x + this._xpengCar.w - 50, this._xpengCar.y + this._xpengCar.h - 25, 18, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#ffeb3b';
+                ctx.beginPath();
+                ctx.arc(this._xpengCar.x + this._xpengCar.w - 25, this._xpengCar.y + 50, 8, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
         if (this.player) this.player.render(this.renderer);
 
         const speedLines = Math.floor(this.speed / 120);
@@ -479,7 +667,7 @@ class XPengRunScene {
 
         this.particles.render(ctx);
 
-        this.hud.render(ctx, this.stamina, CONFIG.PLAYER.MAX_STAMINA, 'xpeng');
+        this.hud.render(ctx, this.stamina, CONFIG.PLAYER.MAX_STAMINA, 'xpeng', this.player.shieldTimer || 0);
 
         const timeLeft = Math.max(0, CONFIG.XPENG.DURATION - this._time);
         const mins = Math.floor(timeLeft / 60);
@@ -492,29 +680,56 @@ class XPengRunScene {
         ctx.lineWidth = 2;
         ctx.strokeRect(w/2 - 130, 20, 260, 50);
         ctx.fillStyle = timeColor;
-        ctx.font = 'bold 28px "Courier New"';
+        ctx.font = 'bold 32px "Courier New"';
         ctx.textAlign = 'center';
         ctx.fillText(`剩余时间: ${mins}:${secs.toString().padStart(2,'0')}`, w/2, 55);
         ctx.restore();
 
+        if (this._xpengCarPhase === 'warning' && timeLeft > 0) {
+            const blink = Math.sin(this._time * 6) > 0;
+            const targetLaneNum = this._targetLane + 1;
+            
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(w/2 - 300, 80, 600, 70);
+            ctx.strokeStyle = blink ? '#ffcc00' : '#ff9900';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(w/2 - 300, 80, 600, 70);
+            ctx.fillStyle = blink ? '#ffff00' : '#ffcc00';
+            ctx.font = 'bold 28px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText(`⚠ 小鹏汽车即将出现！注意第${targetLaneNum}车道！`, w/2, 125);
+            ctx.restore();
+
+            const targetLane = CONFIG.XPENG.LANES[this._targetLane];
+            ctx.save();
+            ctx.fillStyle = blink ? 'rgba(255,220,0,0.9)' : 'rgba(255,180,0,0.7)';
+            ctx.font = 'bold 32px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#ffcc00';
+            ctx.shadowBlur = 20;
+            ctx.fillText('↓ 目标车道 ↓', w/2, targetLane.y - 40);
+            ctx.restore();
+        }
+
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(w - 280, 80, 250, 40);
+        ctx.fillRect(w - 300, 80, 280, 45);
         ctx.fillStyle = '#ffa500';
-        ctx.font = 'bold 20px "Courier New"';
+        ctx.font = 'bold 24px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText(`速度: ${Math.floor(this.speed)} px/s`, w - 155, 108);
+        ctx.fillText(`速度: ${Math.floor(this.speed)} px/s`, w - 160, 110);
         ctx.restore();
 
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(30, h - 90, 260, 70);
+        ctx.fillRect(30, h - 100, 300, 80);
         ctx.fillStyle = '#ccc';
-        ctx.font = '16px "Courier New"';
+        ctx.font = '20px "Courier New"';
         ctx.textAlign = 'left';
-        ctx.fillText('空格/W/↑: 跳跃', 45, h - 65);
-        ctx.fillText('S/↓: 下蹲躲高障碍', 45, h - 42);
-        ctx.fillText('A/D ←/→: 切换车道', 45, h - 19);
+        ctx.fillText('空格/W/↑: 跳跃', 45, h - 70);
+        ctx.fillText('S/↓: 下蹲躲高障碍', 45, h - 45);
+        ctx.fillText('A/D ←/→: 切换车道', 45, h - 20);
         ctx.restore();
 
         if (this.player.invincibleTimer > 0 && Math.floor(this.player.invincibleTimer * 10) % 2 === 0) {
@@ -526,6 +741,32 @@ class XPengRunScene {
             const pulse = 0.1 + Math.sin(this._time * 8) * 0.08;
             ctx.fillStyle = `rgba(255,0,0,${pulse})`;
             ctx.fillRect(0, 0, w, h);
+        }
+
+        if (this.victory) {
+            const endBg = assets.getSprite('BG_XPENG_ENDING');
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            if (endBg && endBg.image) {
+                ctx.drawImage(endBg.image, 0, 0, w, h);
+            } else {
+                const gradient = ctx.createLinearGradient(0, 0, 0, h);
+                gradient.addColorStop(0, '#0a2040');
+                gradient.addColorStop(0.5, '#1a4080');
+                gradient.addColorStop(1, '#0a3060');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, w, h);
+            }
+            ctx.restore();
+            
+            ctx.save();
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 30;
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 64px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText('成功逃离！', w/2, h/2 - 50);
+            ctx.restore();
         }
 
         if (this.gameOver) {

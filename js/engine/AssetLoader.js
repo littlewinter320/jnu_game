@@ -39,71 +39,85 @@ class AssetLoader {
     }
 
     loadAll(onProgress = null) {
-        return fetch(this.manifestPath)
-            .then(r => r.json())
-            .then(manifest => {
-                this.manifest = manifest;
-                const tasks = [];
+        const loadFromManifest = (manifest) => {
+            this.manifest = manifest;
+            const tasks = [];
 
-                const loadImage = (category, key, meta) => {
-                    return new Promise(resolve => {
-                        const img = new Image();
-                        img.onload = () => {
-                            const entry = {
-                                image: img, meta,
-                                naturalWidth: img.naturalWidth,
-                                naturalHeight: img.naturalHeight,
-                                targetWidth: meta.targetWidth || img.naturalWidth,
-                                targetHeight: meta.targetHeight || img.naturalHeight,
-                                placeholder: false
-                            };
-                            this.images[category][key] = entry;
-                            resolve();
+            const loadImage = (category, key, meta) => {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const entry = {
+                            image: img, meta,
+                            naturalWidth: img.naturalWidth,
+                            naturalHeight: img.naturalHeight,
+                            targetWidth: meta.targetWidth || img.naturalWidth,
+                            targetHeight: meta.targetHeight || img.naturalHeight,
+                            placeholder: false
                         };
-                        img.onerror = () => {
-                            this.images[category][key] = {
-                                image: null, meta, placeholder: true,
-                                targetWidth: meta.targetWidth || 64,
-                                targetHeight: meta.targetHeight || 64
-                            };
-                            resolve();
+                        this.images[category][key] = entry;
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        this.images[category][key] = {
+                            image: null, meta, placeholder: true,
+                            targetWidth: meta.targetWidth || 64,
+                            targetHeight: meta.targetHeight || 64
                         };
-                        img.src = meta.file;
-                    });
-                };
+                        resolve();
+                    };
+                    img.src = meta.file;
+                });
+            };
 
-                for (const cat of ['ui', 'backgrounds', 'props', 'puzzles', 'obstacles', 'enemies', 'tiles']) {
-                    const items = manifest[cat];
-                    if (!items) continue;
-                    for (const [key, meta] of Object.entries(items)) {
-                        if (meta.pattern) continue;
-                        if (meta.isAnimated) {
-                            tasks.push(this._loadAnimatedBg(key, meta));
-                        } else {
-                            tasks.push(loadImage(cat, key, meta));
-                        }
-                    }
-                }
-
-                const chars = manifest.characters || {};
-                for (const [key, meta] of Object.entries(chars)) {
-                    if (meta.isSpriteSheet) {
-                        tasks.push(this._loadCharacterSheet(key, meta));
+            for (const cat of ['ui', 'backgrounds', 'props', 'puzzles', 'obstacles', 'enemies', 'tiles']) {
+                const items = manifest[cat];
+                if (!items) continue;
+                for (const [key, meta] of Object.entries(items)) {
+                    if (meta.pattern) continue;
+                    if (meta.isAnimated) {
+                        tasks.push(this._loadAnimatedBg(key, meta));
                     } else {
-                        tasks.push(loadImage('characters', key, meta));
+                        tasks.push(loadImage(cat, key, meta));
                     }
                 }
+            }
 
-                let done = 0;
-                const total = tasks.length;
-                return Promise.all(tasks.map(t => t.then(() => {
-                    done++;
-                    if (onProgress) onProgress(done / total);
-                })));
-            })
-            .then(() => {
+            const chars = manifest.characters || {};
+            for (const [key, meta] of Object.entries(chars)) {
+                if (meta.isSpriteSheet) {
+                    tasks.push(this._loadCharacterSheet(key, meta));
+                } else {
+                    tasks.push(loadImage('characters', key, meta));
+                }
+            }
+
+            let done = 0;
+            const total = tasks.length;
+            return Promise.all(tasks.map(t => t.then(() => {
+                done++;
+                if (onProgress) onProgress(done / total);
+            }))).then(() => {
+                const standaloneTasks = [];
+                const standaloneAnims = manifest.standaloneAnims || {};
+                for (const [key, meta] of Object.entries(standaloneAnims)) {
+                    standaloneTasks.push(this._loadStandaloneAnim(key, meta));
+                }
+                return Promise.all(standaloneTasks);
+            }).then(() => {
                 this.loaded = true;
                 return this;
+            });
+        };
+
+        return fetch(this.manifestPath)
+            .then(r => r.json())
+            .then(manifest => loadFromManifest(manifest))
+            .catch(() => {
+                if (window.EMBEDDED_MANIFEST) {
+                    return loadFromManifest(window.EMBEDDED_MANIFEST);
+                }
+                throw new Error('Cannot load manifest and no embedded manifest available');
             });
     }
 
@@ -147,10 +161,10 @@ class AssetLoader {
 
     _loadCharacterSheet(key, meta) {
         return new Promise(resolve => {
-            fetch(meta.metaFile).then(r => r.json()).then(animMeta => {
+            const gender = key.startsWith('MALE') ? 'male' : 'female';
+            const loadWithAnim = (animMeta) => {
                 const img = new Image();
                 img.onload = () => {
-                    const gender = key.startsWith('MALE') ? 'male' : 'female';
                     this.images.characters[key] = {
                         image: img, meta, naturalWidth: img.naturalWidth,
                         naturalHeight: img.naturalHeight, isSpriteSheet: true,
@@ -174,10 +188,57 @@ class AssetLoader {
                     resolve();
                 };
                 img.src = meta.file;
-            }).catch(() => {
-                this.images.characters[key] = { image: null, placeholder: true };
+            };
+
+            fetch(meta.metaFile).then(r => r.json())
+                .then(animMeta => loadWithAnim(animMeta))
+                .catch(() => {
+                    if (window.EMBEDDED_ANIM_DATA && window.EMBEDDED_ANIM_DATA[gender]) {
+                        loadWithAnim(window.EMBEDDED_ANIM_DATA[gender]);
+                    } else {
+                        this.images.characters[key] = { image: null, placeholder: true };
+                        resolve();
+                    }
+                });
+        });
+    }
+
+    _loadStandaloneAnim(key, meta) {
+        return new Promise(resolve => {
+            const gender = meta.gender;
+            const animName = meta.animName;
+            const img = new Image();
+            img.onload = () => {
+                const frameWidth = meta.frameWidth || Math.floor(img.naturalWidth / (meta.frameCount || 4));
+                const frameHeight = meta.frameHeight || img.naturalHeight;
+                const frameCount = meta.frameCount || 4;
+                const frames = [];
+                for (let i = 0; i < frameCount; i++) {
+                    frames.push({
+                        x: i * frameWidth,
+                        y: 0,
+                        w: frameWidth,
+                        h: frameHeight
+                    });
+                }
+                this.images.characters[key] = {
+                    image: img, meta, naturalWidth: img.naturalWidth,
+                    naturalHeight: img.naturalHeight, placeholder: false
+                };
+                this.charAnims[gender][animName] = {
+                    image: img,
+                    frameWidth: frameWidth,
+                    frameHeight: frameHeight,
+                    frames: frames,
+                    animSpeed: meta.animSpeed || 0.25,
+                    loop: meta.loop !== false
+                };
                 resolve();
-            });
+            };
+            img.onerror = () => {
+                resolve();
+            };
+            img.src = meta.file;
         });
     }
 
@@ -262,7 +323,14 @@ class AssetLoader {
             }
             const img = ab.frames[idx] || entry.image;
             if (img) {
-                ctx.drawImage(img, 0, 0, w, h);
+                const iw = img.naturalWidth || w;
+                const ih = img.naturalHeight || h;
+                const scale = Math.max(w / iw, h / ih);
+                const dw = iw * scale;
+                const dh = ih * scale;
+                const dx = (w - dw) / 2;
+                const dy = (h - dh) / 2;
+                ctx.drawImage(img, dx, dy, dw, dh);
                 return;
             }
         }

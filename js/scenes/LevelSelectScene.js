@@ -23,10 +23,13 @@ class LevelSelectScene {
         const mx = this.input.mouseX, my = this.input.mouseY;
         const assets = window.Game.assets;
 
-        const cardW = 420, cardH = 580;
-        const cardY = h/2 - cardH/2 + 20;
-        const tencentX = w/2 - cardW - 60;
-        const xpengX = w/2 + 60;
+        const cardW = 460, cardH = 640;
+        const cardY = h/2 - cardH/2 + 10;
+        const gap = 80;
+        const totalW = cardW * 2 + gap;
+        const startX = (w - totalW) / 2;
+        const tencentX = startX;
+        const xpengX = startX + cardW + gap;
 
         this._hoverIdx = -1;
         if (this._pointIn(mx, my, {x:tencentX, y:cardY, w:cardW, h:cardH})) this._hoverIdx = 0;
@@ -94,25 +97,28 @@ class LevelSelectScene {
 
         ctx.save();
         ctx.shadowColor = '#4facfe';
-        ctx.shadowBlur = 30;
+        ctx.shadowBlur = 35;
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 52px "Courier New"';
+        ctx.font = 'bold 62px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText('选择关卡', w/2, 110);
+        ctx.fillText('选择关卡', w/2, 120);
         ctx.restore();
 
-        const cardW = 420, cardH = 580;
-        const cardY = h/2 - cardH/2 + 20;
-        const tencentX = w/2 - cardW - 60;
-        const xpengX = w/2 + 60;
+        const cardW = 460, cardH = 640;
+        const cardY = h/2 - cardH/2 + 10;
+        const gap = 80;
+        const totalW = cardW * 2 + gap;
+        const startX = (w - totalW) / 2;
+        const tencentX = startX;
+        const xpengX = startX + cardW + gap;
 
         this._drawLevelCard(ctx, tencentX, cardY, cardW, cardH, 'tencent', 0);
         this._drawLevelCard(ctx, xpengX, cardY, cardW, cardH, 'xpeng', 1);
 
-        ctx.fillStyle = '#aaa';
-        ctx.font = '22px "Courier New"';
+        ctx.fillStyle = '#bbb';
+        ctx.font = '26px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText('← → 选择  |  空格/回车 进入  |  ESC 返回', w/2, h - 45);
+        ctx.fillText('← → 选择  |  空格/回车 进入  |  ESC 返回', w/2, h - 50);
 
         this.particles.render(ctx);
     }
@@ -134,13 +140,13 @@ class LevelSelectScene {
             drawW = w * s; drawH = h * s;
             drawX = x - (drawW - w)/2; drawY = y - (drawH - h)/2;
             ctx.shadowColor = type === 'tencent' ? '#4facfe' : '#ff8c00';
-            ctx.shadowBlur = 35;
+            ctx.shadowBlur = 40;
         } else if (hovered) {
             const s = 1.03;
             drawW = w * s; drawH = h * s;
             drawX = x - (drawW - w)/2; drawY = y - (drawH - h)/2;
             ctx.shadowColor = type === 'tencent' ? 'rgba(79,172,254,0.5)' : 'rgba(255,140,0,0.5)';
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = 25;
         }
 
         if (cardSprite && cardSprite.image) {
@@ -154,19 +160,19 @@ class LevelSelectScene {
         }
 
         ctx.fillStyle = selected ? '#fff' : 'rgba(255,255,255,0.9)';
-        ctx.font = 'bold 36px "Courier New"';
+        ctx.font = 'bold 42px "Courier New"';
         ctx.textAlign = 'center';
         ctx.shadowColor = '#000';
-        ctx.shadowBlur = 6;
-        ctx.fillText(type === 'tencent' ? '腾讯滨海大厦' : '小鹏智造工厂', x + w/2, y + h - 90);
+        ctx.shadowBlur = 8;
+        ctx.fillText(type === 'tencent' ? '腾讯滨海大厦' : '小鹏智造工厂', x + w/2, y + h - 100);
 
-        ctx.font = '20px "Courier New"';
+        ctx.font = '24px "Courier New"';
         ctx.fillStyle = selected ? (type === 'tencent' ? '#aaddff' : '#ffcc88') : 'rgba(255,255,255,0.7)';
-        ctx.fillText(type === 'tencent' ? '横版平台冒险' : '自动跑酷生存', x + w/2, y + h - 55);
+        ctx.fillText(type === 'tencent' ? '横版平台冒险' : '自动跑酷生存', x + w/2, y + h - 60);
 
         if (selected) {
             ctx.fillStyle = type === 'tencent' ? '#4facfe' : '#ff8c00';
-            ctx.font = 'bold 22px "Courier New"';
+            ctx.font = 'bold 26px "Courier New"';
             ctx.fillText('▼ 已选择 ▼', x + w/2, y + h - 20);
         }
         ctx.restore();

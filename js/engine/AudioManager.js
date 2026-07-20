@@ -3,7 +3,7 @@ class AudioManager {
         this.bgmAudio = null;
         this.bgmName = '';
         this.sfxVolume = 0.4;
-        this.bgmVolume = 0.5;
+        this.bgmVolume = 0.25;
         this.muted = false;
         this.lowStaminaMode = false;
         this._ctx = null;
@@ -130,6 +130,26 @@ class AudioManager {
         }
     }
 
+    _kill(freqs, dur, type = 'square', vol = 0.2) {
+        this._ensureContext();
+        this._resume();
+        if (!this._ctx) return;
+        const t = this._ctx.currentTime;
+        const osc = this._ctx.createOscillator();
+        const gain = this._ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freqs[0] || 600, t);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(freqs[1] || 200, 30), t + dur);
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(vol * this.sfxVolume, t + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(gain);
+        gain.connect(this._masterGain);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+        this._noise(dur * 0.5, vol * 0.3);
+    }
+
     playSFX(name) {
         if (this.muted) return;
         this._ensureContext();
@@ -144,6 +164,7 @@ class AudioManager {
                 case 'arp':   this._arp(cfg.freqs, cfg.dur / cfg.freqs.length, cfg.wave, cfg.vol); break;
                 case 'noise': this._noise(cfg.dur, cfg.vol); break;
                 case 'alarm': this._alarm(cfg.freqs, cfg.dur, cfg.wave, cfg.vol); break;
+                case 'kill':  this._kill(cfg.freqs, cfg.dur, cfg.wave, cfg.vol); break;
             }
         } catch (e) { /* ignore */ }
     }

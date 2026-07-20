@@ -60,7 +60,7 @@
         "h": 80
       }
     ],
-    "animSpeed": 0.12,
+    "animSpeed": 0.25,
     "loop": true
   },
   "run_right": {
@@ -92,7 +92,7 @@
         "h": 80
       }
     ],
-    "animSpeed": 0.12,
+    "animSpeed": 0.25,
     "loop": true
   },
   "jump_start": {
@@ -157,7 +157,7 @@
       }
     ],
     "animSpeed": 0.12,
-    "loop": false
+    "loop": true
   },
   "landing": {
     "frameWidth": 112,

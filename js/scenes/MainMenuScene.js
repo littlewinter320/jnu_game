@@ -29,9 +29,9 @@ class MainMenuScene {
 
     _layoutButtons() {
         const cx = CONFIG.CANVAS_WIDTH / 2;
-        const startY = 480;
-        const gap = 20;
-        const bw = 320, bh = 86;
+        const startY = 500;
+        const gap = 24;
+        const bw = 380, bh = 102;
         const labels = [
             { key: 'BTN_START', scene: CONFIG.SCENES.CHARACTER_SELECT },
             { key: 'BTN_HELP', action: 'help' },
@@ -45,7 +45,7 @@ class MainMenuScene {
             w: bw, h: bh,
             scale: 1
         }));
-        this._settingsBtn = { x: CONFIG.CANVAS_WIDTH - 180, y: 30, w: 160, h: 47 };
+        this._settingsBtn = { x: CONFIG.CANVAS_WIDTH - 200, y: 35, w: 180, h: 55 };
     }
 
     update(dt) {
@@ -111,14 +111,15 @@ class MainMenuScene {
         }
 
         const mx = this.input.mouseX, my = this.input.mouseY;
+        const clicked = this.input.mouseJustClicked;
         this._hoverIdx = -1;
         for (let i = 0; i < this._buttons.length; i++) {
             const b = this._buttons[i];
             const over = this._isInBox(mx, my, b.x, b.y, b.w, b.h);
             if (over) {
                 this._hoverIdx = i;
-                b.scale = Math.min(b.scale + dt * 5, CONFIG.UI.BUTTON_HOVER_SCALE);
-                if (this.input.mouseJustClicked) {
+                b.scale = Math.min(b.scale + dt * 10, CONFIG.UI.BUTTON_HOVER_SCALE);
+                if (clicked) {
                     this.audio.playSFX('BUTTON_CLICK');
                     if (b.scene) this.changeScene(b.scene);
                     else if (b.action === 'help') this._showHelp = true;
@@ -126,7 +127,7 @@ class MainMenuScene {
                     else if (b.action === 'end') this._showEndConfirm = true;
                 }
             } else {
-                b.scale = Math.max(b.scale - dt * 5, 1.0);
+                b.scale = Math.max(b.scale - dt * 10, 1.0);
             }
         }
     }
@@ -146,19 +147,19 @@ class MainMenuScene {
 
         const logo = assets.getSprite('LOGO');
         if (logo && logo.image) {
-            const lw = 560, lh = 200;
-            const logoY = 100 + Math.sin(this._time * 2) * 5;
+            const lw = 660, lh = 240;
+            const logoY = 80 + Math.sin(this._time * 2) * 6;
             ctx.save();
             ctx.shadowColor = '#4facfe';
-            ctx.shadowBlur = 40;
+            ctx.shadowBlur = 50;
             ctx.drawImage(logo.image, (w-lw)/2, logoY, lw, lh);
             ctx.restore();
         } else {
             ctx.fillStyle = '#4facfe';
-            ctx.font = 'bold 64px "Courier New"';
+            ctx.font = 'bold 78px "Courier New"';
             ctx.textAlign = 'center';
-            ctx.shadowColor = '#4facfe'; ctx.shadowBlur = 30;
-            ctx.fillText('卓越工程师大冒险', w/2, 200);
+            ctx.shadowColor = '#4facfe'; ctx.shadowBlur = 35;
+            ctx.fillText('卓越工程师大冒险', w/2, 220);
             ctx.shadowBlur = 0;
         }
 
@@ -173,7 +174,7 @@ class MainMenuScene {
                 if (this._hoverIdx === i) {
                     ctx.save();
                     ctx.shadowColor = '#4facfe';
-                    ctx.shadowBlur = 25;
+                    ctx.shadowBlur = 30;
                 }
                 ctx.drawImage(img.image, sx, sy, sw, sh);
                 if (this._hoverIdx === i) ctx.restore();
@@ -181,17 +182,17 @@ class MainMenuScene {
                 ctx.fillStyle = '#4facfe';
                 ctx.fillRect(b.x, b.y, b.w, b.h);
                 ctx.fillStyle = '#fff';
-                ctx.font = 'bold 24px "Courier New"';
+                ctx.font = 'bold 28px "Courier New"';
                 ctx.textAlign = 'center';
                 const labels = ['开始游戏', '操作说明', '制作人员', '结束游戏'];
-                ctx.fillText(labels[i], b.x + b.w/2, b.y + b.h/2 + 8);
+                ctx.fillText(labels[i], b.x + b.w/2, b.y + b.h/2 + 10);
             }
         }
 
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.font = '16px "Courier New"';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '18px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText('v1.0 Alpha Demo  |  卓越工程师培养计划', w/2, h - 30);
+        ctx.fillText('v1.0 Alpha Demo  |  卓越工程师培养计划', w/2, h - 35);
 
         if (this._showHelp) this._renderHelpDialog();
         if (this._showCredits) this._renderCreditsDialog();
@@ -199,18 +200,17 @@ class MainMenuScene {
     }
 
     _drawSeamlessBg(ctx, w, h, assets) {
-        const bgEntry = assets.getSprite('BG_MAIN_MENU');
+        assets.drawBackground(ctx, 'BG_MAIN_MENU', this._time);
 
         const gradient = ctx.createLinearGradient(0, 0, 0, h);
-        gradient.addColorStop(0, '#070d1a');
-        gradient.addColorStop(0.3, '#0f1f3a');
-        gradient.addColorStop(0.6, '#162d52');
-        gradient.addColorStop(1, '#1a3a6c');
+        gradient.addColorStop(0, 'rgba(7,13,26,0.4)');
+        gradient.addColorStop(0.5, 'rgba(10,25,50,0.3)');
+        gradient.addColorStop(1, 'rgba(15,40,75,0.5)');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, w, h);
 
         ctx.save();
-        ctx.globalAlpha = 0.15;
+        ctx.globalAlpha = 0.05;
         const gridSize = 80;
         const offX = this._bgOffset * 0.3 % gridSize;
         const offY = this._bgOffset * 0.15 % gridSize;
@@ -230,27 +230,12 @@ class MainMenuScene {
         }
         ctx.restore();
 
-        if (bgEntry && bgEntry.image && !bgEntry.placeholder) {
-            ctx.save();
-            ctx.globalAlpha = 0.35;
-            const bgW = bgEntry.naturalWidth;
-            const bgH = bgEntry.naturalHeight;
-            const scale = Math.max(w / bgW, h / bgH) * 1.2;
-            const dw = bgW * scale;
-            const dh = bgH * scale;
-            const scrollX = -(this._bgOffset * 0.5) % dw;
-            for (let x = scrollX - dw; x < w + dw; x += dw) {
-                ctx.drawImage(bgEntry.image, x, (h - dh) / 2, dw, dh);
-            }
-            ctx.restore();
-        }
-
         ctx.save();
         for (let i = 0; i < 5; i++) {
             const px = ((i * 300 + this._bgOffset * 0.8) % (w + 400)) - 200;
             const py = 100 + i * 120 + Math.sin(this._time + i) * 30;
-            const size = 40 + i * 15;
-            const alpha = 0.08 + Math.sin(this._time * 0.5 + i) * 0.04;
+            const size = 50 + i * 18;
+            const alpha = 0.1 + Math.sin(this._time * 0.5 + i) * 0.05;
             ctx.globalAlpha = alpha;
             const g = ctx.createRadialGradient(px, py, 0, px, py, size);
             g.addColorStop(0, '#4facfe');
@@ -270,35 +255,35 @@ class MainMenuScene {
         ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 
         ctx.shadowColor = '#4facfe';
-        ctx.shadowBlur = 30;
+        ctx.shadowBlur = 35;
         ctx.fillStyle = 'rgba(8, 18, 40, 0.96)';
         ctx.strokeStyle = '#4facfe';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.roundRect(bx, by, bw, bh, 16);
+        ctx.roundRect(bx, by, bw, bh, 18);
         ctx.fill();
         ctx.stroke();
 
         ctx.strokeStyle = 'rgba(79,172,254,0.3)';
         ctx.lineWidth = 1;
-        for (let ly = by + 60; ly < by + bh - 20; ly += 28) {
+        for (let ly = by + 70; ly < by + bh - 25; ly += 32) {
             ctx.beginPath();
-            ctx.moveTo(bx + 30, ly);
-            ctx.lineTo(bx + bw - 30, ly);
+            ctx.moveTo(bx + 35, ly);
+            ctx.lineTo(bx + bw - 35, ly);
             ctx.stroke();
         }
 
-        const cx = bx + bw - 25;
-        const cy = by + 25;
+        const cx = bx + bw - 30;
+        const cy = by + 30;
         ctx.beginPath();
-        ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,80,80,0.8)';
+        ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,80,80,0.85)';
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(cx - 7, cy - 7); ctx.lineTo(cx + 7, cy + 7);
-        ctx.moveTo(cx + 7, cy - 7); ctx.lineTo(cx - 7, cy + 7);
+        ctx.moveTo(cx - 8, cy - 8); ctx.lineTo(cx + 8, cy + 8);
+        ctx.moveTo(cx + 8, cy - 8); ctx.lineTo(cx - 8, cy + 8);
         ctx.stroke();
 
         ctx.restore();
@@ -307,35 +292,35 @@ class MainMenuScene {
     _renderHelpDialog() {
         const ctx = this.renderer.ctx;
         const w = CONFIG.CANVAS_WIDTH, h = CONFIG.CANVAS_HEIGHT;
-        const bw = 640, bh = 440;
+        const bw = 720, bh = 500;
         const bx = (w - bw) / 2, by = (h - bh) / 2;
 
         this._renderPanel(bx, by, bw, bh);
 
         ctx.fillStyle = '#4facfe';
-        ctx.font = 'bold 32px "Courier New"';
+        ctx.font = 'bold 38px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText('📖 操作说明', w/2, by + 50);
+        ctx.fillText('📖 操作说明', w/2, by + 60);
 
-        ctx.font = '20px "Courier New"';
+        ctx.font = '24px "Courier New"';
         ctx.textAlign = 'left';
         const helpLines = [
-            { text: '▸ 移动控制', color: '#ffd700', y: by + 90 },
-            { text: '  ← → / A D  →  左右移动', color: '#ffffff', y: by + 120 },
-            { text: '  空格 / W / ↑  →  跳跃（支持二段跳）', color: '#ffffff', y: by + 150 },
-            { text: '  ↓ / S  →  下蹲穿越低矮通道', color: '#ffffff', y: by + 180 },
-            { text: '  ESC  →  返回主菜单', color: '#ffffff', y: by + 210 },
-            { text: '', color: '#fff', y: by + 240 },
-            { text: '▸ 关卡目标', color: '#ffd700', y: by + 270 },
-            { text: '  【腾讯大堂】收集6个模块修复企鹅，回到企鹅旁完成', color: '#90ee90', y: by + 300 },
-            { text: '  【小鹏充电桩】自动奔跑，躲避障碍坚持120秒', color: '#90ee90', y: by + 330 },
-            { text: '', color: '#fff', y: by + 360 },
-            { text: '💡 提示：病毒会追踪你，红色电缆碰到即死，注意躲避！', color: '#ff6b6b', y: by + 390 }
+            { text: '▸ 移动控制', color: '#ffd700', y: by + 110 },
+            { text: '  ← → / A D  →  左右移动', color: '#ffffff', y: by + 150 },
+            { text: '  空格 / W / ↑  →  跳跃（支持二段跳）', color: '#ffffff', y: by + 190 },
+            { text: '  ↓ / S  →  下蹲穿越低矮通道', color: '#ffffff', y: by + 230 },
+            { text: '  ESC  →  返回主菜单', color: '#ffffff', y: by + 270 },
+            { text: '', color: '#fff', y: by + 300 },
+            { text: '▸ 关卡目标', color: '#ffd700', y: by + 330 },
+            { text: '  【腾讯大堂】收集6个模块修复企鹅，回到企鹅旁完成', color: '#90ee90', y: by + 370 },
+            { text: '  【小鹏充电桩】自动奔跑，躲避障碍坚持120秒', color: '#90ee90', y: by + 410 },
+            { text: '', color: '#fff', y: by + 440 },
+            { text: '💡 提示：病毒会追踪你，红色电缆碰到即死，注意躲避！', color: '#ff6b6b', y: by + 475 }
         ];
 
         for (const line of helpLines) {
             ctx.fillStyle = line.color;
-            ctx.fillText(line.text, bx + 50, line.y);
+            ctx.fillText(line.text, bx + 55, line.y);
         }
     }
 
@@ -348,25 +333,21 @@ class MainMenuScene {
         this._renderPanel(bx, by, bw, bh);
 
         ctx.fillStyle = '#4facfe';
-        ctx.font = 'bold 32px "Courier New"';
+        ctx.font = 'bold 38px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText('👥 制作人员', w/2, by + 50);
+        ctx.fillText('👥 制作人员', w/2, by + 55);
 
-        ctx.font = '20px "Courier New"';
+        ctx.font = '22px "Courier New"';
         ctx.textAlign = 'center';
         const credits = [
             { text: '卓越工程师大冒险', color: '#ffd700', y: by + 95, size: 26 },
             { text: '─────────────────────', color: '#4facfe', y: by + 130, size: 18 },
-            { text: '游戏策划 & 设计', color: '#aaaacc', y: by + 165, size: 18 },
-            { text: '卓越工程师培养计划', color: '#ffffff', y: by + 195, size: 22 },
-            { text: '', color: '#fff', y: by + 220, size: 18 },
-            { text: '美术 & 程序', color: '#aaaacc', y: by + 250, size: 18 },
-            { text: 'AI Assisted Development', color: '#ffffff', y: by + 280, size: 22 },
-            { text: '', color: '#fff', y: by + 310, size: 18 },
-            { text: '特别感谢', color: '#aaaacc', y: by + 340, size: 18 },
-            { text: '腾讯 & 小鹏汽车提供灵感与场景', color: '#90ee90', y: by + 370, size: 20 },
-            { text: '', color: '#fff', y: by + 395, size: 18 },
-            { text: '© 2024 卓越工程师大冒险', color: '#666', y: by + 420, size: 16 }
+            { text: '制作人', color: '#aaaacc', y: by + 175, size: 20 },
+            { text: '李钢宝乐德', color: '#ffffff', y: by + 210, size: 24 },
+            { text: '美术', color: '#aaaacc', y: by + 255, size: 20 },
+            { text: '许铭睿  吴安懒  王再亮', color: '#ffffff', y: by + 290, size: 22 },
+            { text: '音乐', color: '#aaaacc', y: by + 335, size: 20 },
+            { text: '叶昱翔', color: '#ffffff', y: by + 370, size: 24 }
         ];
 
         for (const line of credits) {
@@ -379,62 +360,61 @@ class MainMenuScene {
     _renderEndDialog() {
         const ctx = this.renderer.ctx;
         const w = CONFIG.CANVAS_WIDTH, h = CONFIG.CANVAS_HEIGHT;
-        const bw = 520, bh = 300;
+        const bw = 580, bh = 340;
         const bx = (w - bw) / 2, by = (h - bh) / 2;
 
         this._renderPanel(bx, by, bw, bh);
 
         ctx.fillStyle = '#4facfe';
-        ctx.font = 'bold 32px "Courier New"';
+        ctx.font = 'bold 38px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText('🚪 结束游戏', w/2, by + 55);
+        ctx.fillText('🚪 结束游戏', w/2, by + 65);
 
         ctx.fillStyle = '#ddd';
-        ctx.font = '20px "Courier New"';
+        ctx.font = '24px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText('确定要结束游戏吗？', w/2, by + 120);
-        ctx.fillText('感谢你的游玩！', w/2, by + 155);
+        ctx.fillText('确定要结束游戏吗？', w/2, by + 140);
+        ctx.fillText('感谢你的游玩！', w/2, by + 185);
 
-        const btnW = 160, btnH = 55;
-        const btnY = by + bh - 90;
+        const btnW = 180, btnH = 65;
+        const btnY = by + bh - 100;
 
-        const yesX = bx + 60;
+        const yesX = bx + 70;
         ctx.save();
         ctx.shadowColor = '#ff6b6b';
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 18;
         ctx.fillStyle = 'rgba(255,80,80,0.9)';
         ctx.strokeStyle = '#ff6b6b';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(yesX, btnY, btnW, btnH, 10);
+        ctx.roundRect(yesX, btnY, btnW, btnH, 12);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 22px "Courier New"';
-        ctx.fillText('确定退出', yesX + btnW/2, btnY + 36);
+        ctx.font = 'bold 26px "Courier New"';
+        ctx.fillText('确定退出', yesX + btnW/2, btnY + 42);
         ctx.restore();
 
-        const noX = bx + bw - btnW - 60;
+        const noX = bx + bw - btnW - 70;
         ctx.save();
         ctx.shadowColor = '#4facfe';
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 18;
         ctx.fillStyle = 'rgba(79,172,254,0.9)';
         ctx.strokeStyle = '#4facfe';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(noX, btnY, btnW, btnH, 10);
+        ctx.roundRect(noX, btnY, btnW, btnH, 12);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#fff';
-        ctx.fillText('继续游玩', noX + btnW/2, btnY + 36);
+        ctx.fillText('继续游玩', noX + btnW/2, btnY + 42);
         ctx.restore();
 
         const mx = this.input.mouseX, my = this.input.mouseY;
         if (this.input.mouseJustClicked) {
             if (this._isInBox(mx, my, yesX, btnY, btnW, btnH)) {
-                window.close();
                 try { window.close(); } catch(e) {}
-                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a1628;color:#4facfe;font-family:Courier New,sans-serif;font-size:28px;text-align:center;">感谢游玩！<br>你可以关闭此页面了。</div>';
+                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a1628;color:#4facfe;font-family:Courier New,sans-serif;font-size:32px;text-align:center;">感谢游玩！<br>你可以关闭此页面了。</div>';
             } else if (this._isInBox(mx, my, noX, btnY, btnW, btnH) ||
                        !this._isInBox(mx, my, bx, by, bw, bh)) {
                 this.audio.playSFX('BUTTON_CLICK');

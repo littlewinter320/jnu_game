@@ -52,41 +52,78 @@ class GameOverScene {
         const ctx = this.renderer.ctx, w = CONFIG.CANVAS_WIDTH, h = CONFIG.CANVAS_HEIGHT;
         const assets = this.assets;
 
+        const bw = 650, bh = 460;
+        const bx = (w - bw) / 2, by = (h - bh) / 2 - 30;
+
+        // 绘制背景遮罩
         ctx.fillStyle = 'rgba(0,0,0,0.92)';
         ctx.fillRect(0, 0, w, h);
 
-        const box = assets.getSprite('UI_DIALOG_BOX');
-        const bw = 650, bh = 460;
-        const bx = (w - bw) / 2, by = (h - bh) / 2 - 30;
-        if (box && box.image) {
-            ctx.save();
-            ctx.globalAlpha = 0.9;
-            ctx.drawImage(box.image, bx, by, bw, bh);
-            ctx.restore();
-        } else {
-            ctx.fillStyle = 'rgba(40,10,10,0.95)';
-            ctx.strokeStyle = '#ff4444';
-            ctx.lineWidth = 4;
-            ctx.fillRect(bx, by, bw, bh);
-            ctx.strokeRect(bx, by, bw, bh);
-        }
-
+        // 绘制红色对话框（在遮罩之上）
+        const r = 18;
         ctx.save();
         ctx.shadowColor = '#ff4444';
-        ctx.shadowBlur = 30;
-        ctx.fillStyle = '#ff4444';
-        ctx.font = 'bold 56px "Courier New"';
+        ctx.shadowBlur = 35;
+        // 手动绘制圆角矩形路径
+        ctx.beginPath();
+        ctx.moveTo(bx + r, by);
+        ctx.lineTo(bx + bw - r, by);
+        ctx.arcTo(bx + bw, by, bx + bw, by + r, r);
+        ctx.lineTo(bx + bw, by + bh - r);
+        ctx.arcTo(bx + bw, by + bh, bx + bw - r, by + bh, r);
+        ctx.lineTo(bx + r, by + bh);
+        ctx.arcTo(bx, by + bh, bx, by + bh - r, r);
+        ctx.lineTo(bx, by + r);
+        ctx.arcTo(bx, by, bx + r, by, r);
+        ctx.closePath();
+        // 填充完全不透明的深红灰色背景（更亮以便文字清晰）
+        ctx.fillStyle = '#4a2020';
+        ctx.fill();
+        // 绘制红色边框
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.restore();
+
+        // 关闭按钮
+        const cx = bx + bw - 30;
+        const cy = by + 30;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,80,80,0.85)';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, cy - 8); ctx.lineTo(cx + 8, cy + 8);
+        ctx.moveTo(cx + 8, cy - 8); ctx.lineTo(cx - 8, cy + 8);
+        ctx.stroke();
+
+        // 标题文字
+        ctx.save();
+        ctx.shadowColor = '#ff4444';
+        ctx.shadowBlur = 25;
+        ctx.fillStyle = '#ff6666';
+        ctx.font = 'bold 64px "Courier New"';
         ctx.textAlign = 'center';
         const shake = Math.sin(this._time * 15) * (this._time < 1 ? 4 : 0);
-        ctx.fillText('任务失败', w/2 + shake, by + 100);
+        ctx.fillText('任务失败', w/2 + shake, by + 110);
         ctx.restore();
 
         const reason = this._data.reason || 'unknown';
         let failMsg = '任务失败！';
         let reasonMsg = '';
         if (this._data.level === 'xpeng') {
-            failMsg = '体力耗尽，充能失败！';
-            reasonMsg = reason === 'stamina' ? '体力不足' : reason;
+            if (reason === 'stamina') {
+                failMsg = '体力耗尽，充能失败！';
+                reasonMsg = '体力不足';
+            } else if (reason === 'missed_xpeng') {
+                failMsg = '错过了救援车辆！';
+                reasonMsg = '没有切换到正确车道';
+            } else {
+                failMsg = '充能挑战失败！';
+                reasonMsg = '碰到了障碍物';
+            }
         } else if (this._data.level === 'tencent') {
             if (reason === 'fall') {
                 failMsg = '坠入深渊，任务失败！';
@@ -105,20 +142,38 @@ class GameOverScene {
             failMsg = '任务失败！';
             reasonMsg = reason;
         }
-        ctx.fillStyle = '#ff8888';
-        ctx.font = '26px "Courier New"';
+
+        // 失败描述文字
+        ctx.save();
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#ffaaaa';
+        ctx.font = 'bold 30px "Courier New"';
         ctx.textAlign = 'center';
-        ctx.fillText(failMsg, w/2, by + 170);
+        ctx.fillText(failMsg, w/2, by + 180);
+        ctx.restore();
 
-        ctx.fillStyle = '#ccc';
-        ctx.font = '22px "Courier New"';
+        // 原因文字
+        ctx.save();
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#dddddd';
+        ctx.font = 'bold 26px "Courier New"';
+        ctx.textAlign = 'center';
         if (reasonMsg) {
-            ctx.fillText(`原因: ${reasonMsg}`, w/2, by + 220);
+            ctx.fillText(`原因: ${reasonMsg}`, w/2, by + 230);
         }
+        ctx.restore();
 
-        ctx.fillStyle = '#888';
-        ctx.font = '20px "Courier New"';
-        ctx.fillText('不要灰心，再试一次吧！', w/2, by + 270);
+        // 鼓励文字
+        ctx.save();
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#bbbbbb';
+        ctx.font = 'bold 24px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('不要灰心，再试一次吧！', w/2, by + 285);
+        ctx.restore();
 
         const restartBtn = assets.getSprite('BTN_RESTART');
         if (restartBtn && restartBtn.image && this._btnBounds) {

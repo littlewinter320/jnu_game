@@ -8,10 +8,12 @@ class TencentLobbyScene {
         this.gender = 'male';
         this.player = null;
         this.platforms = [];
-        this.decorations = [];
+        this.movingPlatforms = [];
         this.deadlyHazards = [];
         this.props = [];
         this.viruses = [];
+        this.rangedViruses = [];
+        this.shieldItems = [];
         this.collectedProps = [];
         this.hud = null;
         this.cameraX = 0;
@@ -26,6 +28,7 @@ class TencentLobbyScene {
         this._bgBlend = 0;
         this._groundSegments = [];
         this._lastVirusWarn = 0;
+        this._seed = 0;
 
         this.penguin = null;
         this.penguinFixed = false;
@@ -34,11 +37,27 @@ class TencentLobbyScene {
         this.storyDone = false;
     }
 
+    _seededRandom() {
+        this._seed = (this._seed * 9301 + 49297) % 233280;
+        return this._seed / 233280;
+    }
+
+    _randomRange(min, max) {
+        return min + this._seededRandom() * (max - min);
+    }
+
+    _randomInt(min, max) {
+        return Math.floor(this._randomRange(min, max + 1));
+    }
+
     enter(data) {
         this._time = 0;
         this.gender = data?.gender || 'male';
+        this._seed = Date.now() % 233280;
         this.cameraX = 0;
         this.collectedProps = [];
+        this.rangedViruses = [];
+        this.shieldItems = [];
         this.gameOver = false;
         this.victory = false;
         this.endTimer = 0;
@@ -48,8 +67,8 @@ class TencentLobbyScene {
         this.currentAreaIdx = 0;
         this._bgBlend = 0;
         this.penguinFixed = false;
-        this.storyPhase = 'intro';
-        this.storyDone = false;
+        this.storyPhase = 'playing';
+        this.storyDone = true;
         this.particles.clear();
 
         const px = CONFIG.TENCENT.PLAYER_START_X;
@@ -71,7 +90,7 @@ class TencentLobbyScene {
         };
 
         this._buildLevel();
-        this._initDialogue();
+        this.dialogueSystem = null;
         this.hud = new HUD();
         this.currentAreaName = CONFIG.TENCENT.AREA_NAMES[0];
         this.audio.playBGM('TENCENT');
@@ -97,12 +116,34 @@ class TencentLobbyScene {
         };
     }
 
+    _initEndingDialogue() {
+        this.dialogueSystem = {
+            active: true,
+            currentLine: 0,
+            lines: [
+                { speaker: 'penguin', text: '哔...系统修复完成！所有核心模块已归位！' },
+                { speaker: 'player', text: '太好了！企鹅先生，你终于恢复正常了！' },
+                { speaker: 'penguin', text: '感谢你的帮助，工程师！你找回了微信、QQ、游戏、云、内容和技术的所有模块！' },
+                { speaker: 'player', text: '这是我应该做的！腾讯的技术生态真的很强大！' },
+                { speaker: 'penguin', text: '你是真正的卓越工程师！腾讯大楼欢迎你！' }
+            ],
+            lineTimer: 0,
+            lineDuration: 0.05,
+            charIndex: 0,
+            waitingForInput: false,
+            justCompleted: false,
+            isEnding: true
+        };
+    }
+
     _buildLevel() {
         this.platforms = [];
-        this.decorations = [];
+        this.movingPlatforms = [];
         this.deadlyHazards = [];
         this.props = [];
         this.viruses = [];
+        this.rangedViruses = [];
+        this.shieldItems = [];
         this._groundSegments = [];
 
         const ts = CONFIG.TILES.TILE_SIZE;
@@ -112,8 +153,10 @@ class TencentLobbyScene {
         const gaps = CONFIG.TENCENT.GROUND_GAPS;
         let segStart = 0;
         for (const gap of gaps) {
-            this._groundSegments.push({ x: segStart, w: gap.x - segStart });
-            segStart = gap.x + gap.w;
+            const gapX = gap.x + this._randomRange(-50, 50);
+            const gapW = gap.w + this._randomRange(-30, 30);
+            this._groundSegments.push({ x: segStart, w: gapX - segStart });
+            segStart = gapX + gapW;
         }
         this._groundSegments.push({ x: segStart, w: ll - segStart });
 
@@ -129,10 +172,13 @@ class TencentLobbyScene {
         const platTypes = ['platform', 'metal', 'tech', 'thin', 'semisolid'];
         for (let i = 0; i < platLayout.length; i++) {
             const pl = platLayout[i];
-            const pw = pl.w * ts;
+            const offsetX = this._randomRange(-80, 80);
+            const offsetY = this._randomRange(-40, 40);
+            const widthVar = this._randomInt(-1, 1);
+            const pw = (pl.w + widthVar) * ts;
             const ptype = platTypes[i % platTypes.length];
             this.platforms.push({
-                x: pl.x, y: pl.y, w: pw, h: platH,
+                x: pl.x + offsetX, y: pl.y + offsetY, w: pw, h: platH,
                 isGround: false, isSolid: true,
                 type: pl.type || ptype
             });
@@ -148,61 +194,12 @@ class TencentLobbyScene {
             { x: 13000, y: 750, w: 4, type: 'platform' }
         ];
         for (const sp of specialPlatforms) {
+            const offsetX = this._randomRange(-80, 80);
+            const offsetY = this._randomRange(-40, 40);
+            const widthVar = this._randomInt(-1, 1);
             this.platforms.push({
-                x: sp.x, y: sp.y, w: sp.w * ts, h: platH,
+                x: sp.x + offsetX, y: sp.y + offsetY, w: (sp.w + widthVar) * ts, h: platH,
                 isGround: false, isSolid: true, type: sp.type
-            });
-        }
-
-        const limitedDecTypes = [
-            { key: 'OBS_CONES', w: 50, h: 60, yOff: -60 },
-            { key: 'OBS_WARNING_LIGHT', w: 45, h: 70, yOff: -70 },
-            { key: 'OBS_MACHINERY', w: 100, h: 110, yOff: -110 },
-            { key: 'OBS_HIGH_PIPES', w: 80, h: 140, yOff: -140 },
-            { key: 'OBS_LOW_SERVERS', w: 100, h: 45, yOff: -45 }
-        ];
-
-        const decPositions = [
-            { x: 700, onPlat: false },
-            { x: 2500, onPlat: false },
-            { x: 4800, onPlat: true },
-            { x: 7200, onPlat: false },
-            { x: 9800, onPlat: true }
-        ];
-
-        for (let i = 0; i < decPositions.length; i++) {
-            const dp = decPositions[i];
-            const dec = limitedDecTypes[i % limitedDecTypes.length];
-            let dy;
-            if (dp.onPlat) {
-                const nearPlats = this.platforms.filter(p => !p.isGround && Math.abs(p.x + p.w/2 - dp.x) < 200);
-                if (nearPlats.length > 0) {
-                    const pl = nearPlats[0];
-                    dy = pl.y + dec.yOff;
-                } else {
-                    dy = gy + dec.yOff;
-                }
-            } else {
-                dy = gy + dec.yOff;
-            }
-            this.decorations.push({
-                x: dp.x, y: dy, w: dec.w, h: dec.h, spriteKey: dec.key
-            });
-        }
-
-        this.bgDecorations = [];
-        const bgDecoTypes = ['building_s', 'building_m', 'building_t', 'tower'];
-        for (let bx = 500; bx < ll - 500; bx += 800 + Math.random() * 400) {
-            const type = bgDecoTypes[Math.floor(Math.random() * bgDecoTypes.length)];
-            const sizes = { building_s: 200, building_m: 250, building_t: 220, tower: 180 };
-            const heights = { building_s: 300, building_m: 350, building_t: 380, tower: 400 };
-            this.bgDecorations.push({
-                x: bx,
-                y: gy - heights[type],
-                w: sizes[type],
-                h: heights[type],
-                type: type,
-                alpha: 0.15 + Math.random() * 0.1
             });
         }
 
@@ -223,10 +220,12 @@ class TencentLobbyScene {
         ];
 
         for (const hp of hazardPositions) {
-            const hz = hazardTypes[Math.floor(Math.random() * hazardTypes.length)];
+            const hzIdx = this._randomInt(0, hazardTypes.length - 1);
+            const hz = hazardTypes[hzIdx];
+            const hazardX = hp.x + this._randomRange(-100, 100);
             let hy;
             if (hp.onPlat) {
-                const nearPlats = this.platforms.filter(p => !p.isGround && Math.abs(p.x + p.w/2 - hp.x) < 200);
+                const nearPlats = this.platforms.filter(p => !p.isGround && Math.abs(p.x + p.w/2 - hazardX) < 200);
                 if (nearPlats.length > 0) {
                     const pl = nearPlats[0];
                     hy = pl.y + hz.yOff;
@@ -237,15 +236,16 @@ class TencentLobbyScene {
                 hy = gy + hz.yOff;
             }
             this.deadlyHazards.push({
-                x: hp.x, y: hy, w: hz.w, h: hz.h, spriteKey: hz.key
+                x: hazardX, y: hy, w: hz.w, h: hz.h, spriteKey: hz.key
             });
         }
 
         CONFIG.TENCENT.PROP_TARGETS.forEach((pt) => {
+            const propX = pt.x + this._randomRange(-100, 100);
             this.props.push({
-                x: pt.x, y: gy - 220 - Math.random() * 100,
+                x: propX, y: gy - 220 - this._randomRange(0, 100),
                 w: 58, h: 58, spriteKey: pt.key, area: pt.area,
-                collected: false, floatPhase: Math.random() * Math.PI * 2
+                collected: false, floatPhase: this._randomRange(0, Math.PI * 2)
             });
         });
 
@@ -259,14 +259,99 @@ class TencentLobbyScene {
             { x: 12000, y: gy - 80 }
         ];
         for (const vp of virusPositions) {
-            this.viruses.push(new Virus(vp.x, vp.y));
+            const vx = vp.x + this._randomRange(-100, 100);
+            const vy = vp.y + this._randomRange(-20, 20);
+            this.viruses.push(new Virus(vx, vy));
+        }
+
+        const rangedVirusPositions = [
+            { x: 6400, y: 520 },
+            { x: 8300, y: 520 },
+            { x: 10200, y: 520 }
+        ];
+        for (const rvp of rangedVirusPositions) {
+            const rvx = rvp.x + this._randomRange(-120, 120);
+            const rvy = rvp.y + this._randomRange(-60, 40);
+            this.rangedViruses.push(new RangedVirus(rvx, rvy));
+        }
+
+        const shieldPositions = [
+            { x: 2500, y: CONFIG.TENCENT.GROUND_Y - 180 },
+            { x: 5500, y: CONFIG.TENCENT.GROUND_Y - 180 },
+            { x: 8000, y: CONFIG.TENCENT.GROUND_Y - 180 }
+        ];
+        for (const sp of shieldPositions) {
+            const sx = sp.x + this._randomRange(-120, 120);
+            const sy = sp.y + this._randomRange(-60, 60);
+            this.shieldItems.push({
+                x: sx, y: sy, w: 40, h: 40,
+                collected: false, floatPhase: this._randomRange(0, Math.PI * 2), type: 'shield'
+            });
+        }
+
+        this._initMovingPlatforms();
+    }
+
+    _initMovingPlatforms() {
+        const mpConfigs = CONFIG.TENCENT.MOVING_PLATFORMS || [];
+        const ts = CONFIG.TILES.TILE_SIZE;
+        const platH = 50;
+
+        for (const cfg of mpConfigs) {
+            const offsetX = this._randomRange(-80, 80);
+            const offsetY = this._randomRange(-50, 50);
+            const startX = cfg.x + offsetX;
+            const startY = cfg.y + offsetY;
+            const movePattern = cfg.movePattern || (this._seededRandom() > 0.5 ? 'horizontal' : 'vertical');
+            const baseRange = cfg.moveRange || (movePattern === 'horizontal' ? 120 : 80);
+            const moveRange = baseRange + this._randomRange(-30, 50);
+            const baseSpeed = cfg.moveSpeed || 60;
+            const moveSpeed = baseSpeed + this._randomRange(-20, 30);
+            const wVariation = this._randomInt(-1, 1);
+            const mp = {
+                x: startX,
+                y: startY,
+                startX: startX,
+                startY: startY,
+                w: (cfg.w + wVariation) * ts,
+                h: platH,
+                isGround: false,
+                isSolid: true,
+                isMoving: true,
+                type: cfg.type || 'moving',
+                movePattern: movePattern,
+                moveRange: moveRange,
+                moveSpeed: moveSpeed,
+                moveOffset: this._randomRange(0, Math.PI * 2),
+                vx: 0,
+                vy: 0
+            };
+            this.movingPlatforms.push(mp);
+        }
+    }
+
+    _updateMovingPlatforms(dt) {
+        for (const mp of this.movingPlatforms) {
+            const prevX = mp.x;
+            const prevY = mp.y;
+
+            const angularSpeed = mp.moveSpeed / mp.moveRange;
+            mp.moveOffset += angularSpeed * dt;
+            if (mp.movePattern === 'horizontal') {
+                mp.x = mp.startX + Math.sin(mp.moveOffset) * mp.moveRange;
+            } else {
+                mp.y = mp.startY + Math.sin(mp.moveOffset) * mp.moveRange;
+            }
+
+            mp.vx = (mp.x - prevX) / dt;
+            mp.vy = (mp.y - prevY) / dt;
         }
     }
 
     _killPlayer(reason = 'hazard') {
         if (this.gameOver || this.victory) return;
         this.gameOver = true;
-        this.audio.playSFX('DIE');
+        this.audio.playSFX('DEATH');
         this.player.die();
         this.particles.emitExplosion(this.player.x + this.player.w/2, this.player.y + this.player.h/2);
         this.renderer.shake(15, 0.4);
@@ -283,8 +368,12 @@ class TencentLobbyScene {
             ds.justCompleted = false;
             if (ds.currentLine >= ds.lines.length) {
                 ds.active = false;
-                this.storyPhase = 'playing';
-                this.storyDone = true;
+                if (ds.isEnding) {
+                    this._endingDialogueDone = true;
+                } else {
+                    this.storyPhase = 'playing';
+                    this.storyDone = true;
+                }
             }
         }
     }
@@ -387,6 +476,19 @@ class TencentLobbyScene {
         const line = ds.lines[ds.currentLine];
         if (!line) return;
 
+        if (this.input.isJustPressed(CONFIG.KEYS.ESC)) {
+            ds.active = false;
+            if (ds.isEnding) {
+                this._endingDialogueDone = true;
+            } else {
+                this.storyPhase = 'playing';
+                this.storyDone = true;
+            }
+            this._dialogueJustSkipped = true;
+            this.audio.playSFX('BUTTON_CLICK');
+            return;
+        }
+
         if (!ds.waitingForInput) {
             ds.lineTimer += dt;
             if (ds.lineTimer >= ds.lineDuration) {
@@ -429,10 +531,14 @@ class TencentLobbyScene {
         this._time += dt;
         if (this._hintTimer > 0) this._hintTimer -= dt;
 
+        this._dialogueJustSkipped = false;
         this._updateDialogue(dt);
 
         if (this.gameOver || this.victory) {
-            this.endTimer += dt;
+            if (!(this.victory && this.dialogueSystem?.active)) {
+                this.endTimer += dt;
+            }
+            this.player.update(dt);
             this.particles.update(dt);
             if (this.endTimer > 2.5) {
                 if (this.victory) {
@@ -453,7 +559,7 @@ class TencentLobbyScene {
         if (this.dialogueSystem?.active) {
             this.player.vx = 0;
             this.player.vy = 0;
-            this.player.updateAnimation(dt);
+            this.player.updateAnim(dt);
             this.particles.update(dt);
             return;
         }
@@ -485,13 +591,18 @@ class TencentLobbyScene {
             }
         }
 
+        this._updateMovingPlatforms(dt);
+
+        let standingOnMovingPlatform = null;
+
         let wantCrouch = this.input.isDown(CONFIG.KEYS.S) || this.input.isDown(CONFIG.KEYS.DOWN);
         if (wantCrouch && !p.crouching && p.onGround) {
             p.crouch(true);
         } else if (!wantCrouch && p.crouching) {
             let canStand = true;
-            const standH = this.player._charInfo?.h || CONFIG.PLAYER.HEIGHT;
-            for (const plat of this.platforms) {
+            const standH = CONFIG.PLAYER.HEIGHT;
+            const allPlats = [...this.platforms, ...this.movingPlatforms];
+            for (const plat of allPlats) {
                 if (plat.isGround) continue;
                 if (p.x + p.w > plat.x && p.x < plat.x + plat.w) {
                     if (p.y - (standH - p.h) < plat.y + plat.h && p.y > plat.y) {
@@ -507,13 +618,15 @@ class TencentLobbyScene {
         const wasOnGround = p.onGround;
         p.onGround = false;
 
-        p.update(dt);
+        p.integrate(dt);
 
-        for (const plat of this.platforms) {
+        const allPlatforms = [...this.platforms, ...this.movingPlatforms];
+        for (const plat of allPlatforms) {
             if (CollisionSystem.platformCollision(p, plat)) {
                 p.y = plat.y - p.h;
                 p.vy = 0;
                 if (!wasOnGround && !p.onGround) {
+                    p.land();
                     this.audio.playSFX('LAND');
                     this.particles.emitDust(p.x + p.w/2, p.y + p.h);
                 }
@@ -522,8 +635,17 @@ class TencentLobbyScene {
                 if (p.crouching && !wantCrouch) {
                     p.crouch(false);
                 }
+                if (plat.isMoving) {
+                    standingOnMovingPlatform = plat;
+                }
             }
         }
+
+        if (standingOnMovingPlatform) {
+            p.x += standingOnMovingPlatform.vx * dt;
+        }
+
+        p.updateAnim(dt);
 
         if (p.x < 0) p.x = 0;
         if (p.x > CONFIG.TENCENT.LEVEL_LENGTH - p.w) p.x = CONFIG.TENCENT.LEVEL_LENGTH - p.w;
@@ -537,26 +659,116 @@ class TencentLobbyScene {
         const playerHb = { x: p.x + 10, y: p.y + 5, w: p.w - 20, h: p.h - 10 };
 
         for (const hz of this.deadlyHazards) {
+            if (hz.hit) continue;
             if (CollisionSystem.aabb(playerHb, hz)) {
-                this._killPlayer('hazard');
-                this.particles.update(dt);
-                return;
+                if (p.blockDamage()) {
+                    hz.hit = true;
+                    this.particles.emitExplosion(hz.x + hz.w/2, hz.y + hz.h/2);
+                    this.audio.playSFX('KILL');
+                } else {
+                    this._killPlayer('hazard');
+                    this.particles.update(dt);
+                    return;
+                }
             }
         }
+        this.deadlyHazards = this.deadlyHazards.filter(hz => !hz.hit);
 
+        const allPlatformsForVirus = [...this.platforms, ...this.movingPlatforms];
         for (const virus of this.viruses) {
-            virus.update(dt, p, this.platforms);
-            const virusHb = virus.getHitbox();
+            virus.update(dt, p, allPlatformsForVirus);
             if (virus.agitated && this._time - this._lastVirusWarn > 3) {
                 this._lastVirusWarn = this._time;
                 this.audio.playSFX('VIRUS_ALERT');
             }
-            if (CollisionSystem.aabb(playerHb, virusHb)) {
-                this._killPlayer('virus');
-                this.particles.update(dt);
-                return;
+
+            if (virus.dead) continue;
+
+            let stomped = false;
+            if (p.vy > 0) {
+                const stompHb = virus.getStompHitbox();
+                const pBottom = p.y + p.h;
+                if (pBottom >= stompHb.y && pBottom <= stompHb.y + 25 &&
+                    p.x + p.w > stompHb.x + 10 && p.x < stompHb.x + stompHb.w - 10) {
+                    virus.stomp();
+                    p.stompBounce();
+                    this.audio.playSFX('KILL');
+                    this.particles.emitDust(virus.x + virus.w/2, virus.y);
+                    stomped = true;
+                }
+            }
+
+            if (!stomped) {
+                const virusHb = virus.getHitbox();
+                if (CollisionSystem.aabb(playerHb, virusHb)) {
+                    if (p.blockDamage()) {
+                        virus.stomp();
+                        this.audio.playSFX('KILL');
+                        this.particles.emitDust(virus.x + virus.w/2, virus.y);
+                    } else {
+                        this._killPlayer('virus');
+                        this.particles.update(dt);
+                        return;
+                    }
+                }
             }
         }
+
+        for (const rv of this.rangedViruses) {
+            rv.update(dt, p, allPlatformsForVirus, this.cameraX);
+
+            if (rv.dead) continue;
+
+            let stomped = false;
+            if (p.vy > 0) {
+                const stompHb = rv.getStompHitbox();
+                const pBottom = p.y + p.h;
+                if (pBottom >= stompHb.y && pBottom <= stompHb.y + 25 &&
+                    p.x + p.w > stompHb.x + 10 && p.x < stompHb.x + stompHb.w - 10) {
+                    rv.stomp();
+                    p.stompBounce();
+                    this.audio.playSFX('KILL');
+                    this.particles.emitDust(rv.x + rv.w/2, rv.y);
+                    stomped = true;
+                }
+            }
+
+            if (!stomped) {
+                const rvHb = rv.getHitbox();
+                if (CollisionSystem.aabb(playerHb, rvHb)) {
+                    if (p.blockDamage()) {
+                        rv.stomp();
+                        this.audio.playSFX('KILL');
+                        this.particles.emitDust(rv.x + rv.w/2, rv.y);
+                    } else {
+                        this._killPlayer('virus');
+                        this.particles.update(dt);
+                        return;
+                    }
+                }
+            }
+
+            for (const proj of rv.projectiles) {
+                if (proj.dead) continue;
+                const projHb = proj.getHitbox();
+                if (CollisionSystem.aabb(playerHb, projHb)) {
+                    proj.dead = true;
+                    if (p.blockDamage()) {
+                        this.particles.emitExplosion(projHb.x + projHb.w/2, projHb.y + projHb.h/2);
+                    } else {
+                        if (p.takeDamage(30)) {
+                            this.audio.playSFX('HURT');
+                            this._killPlayer('projectile');
+                            this.particles.update(dt);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        this.viruses = this.viruses.filter(v => !v.dead || v.deadTimer <= 0.8);
+        this.rangedViruses = this.rangedViruses.filter(rv => !rv.dead || rv.deadTimer <= 0.8);
 
         for (const prop of this.props) {
             if (prop.collected) continue;
@@ -566,6 +778,19 @@ class TencentLobbyScene {
                 this.hud.addProp(prop.area);
                 this.audio.playSFX('COLLECT');
                 this.particles.emitCollect(prop.x + prop.w/2, prop.y + prop.h/2);
+            }
+        }
+
+        for (const si of this.shieldItems) {
+            if (si.collected) continue;
+            if (CollisionSystem.aabb(p, { x: si.x, y: si.y, w: si.w, h: si.h })) {
+                si.collected = true;
+                p.activateShield();
+                this.audio.playSFX('SHIELD_PICKUP');
+                this.particles.emit(si.x + si.w/2, si.y + si.h/2, {
+                    count: 20, spreadX: 150, spreadY: 150, life: 0.6, size: 4,
+                    colors: ['#00ddff', '#88eeff', '#4facfe'], shape: 'circle'
+                });
             }
         }
 
@@ -597,7 +822,7 @@ class TencentLobbyScene {
                 this.victory = true;
                 this.audio.playSFX('VICTORY');
                 p.playVictory();
-                this._showEndingDialogue = true;
+                this._initEndingDialogue();
                 for (let i = 0; i < 8; i++) {
                     setTimeout(() => this.particles.emitCollect(
                         exitX + this.penguin.w/2 + (Math.random()-0.5)*200,
@@ -625,7 +850,7 @@ class TencentLobbyScene {
         }
         this._bgBlend = Math.min(1, this._bgBlend + dt * CONFIG.XPENG.BG_BLEND_SPEED);
 
-        if (this.input.isJustPressed(CONFIG.KEYS.ESC)) {
+        if (this.input.isJustPressed(CONFIG.KEYS.ESC) && !this._dialogueJustSkipped) {
             this.audio.playSFX('BUTTON_CLICK');
             this.changeScene(CONFIG.SCENES.MAIN_MENU);
         }
@@ -686,10 +911,6 @@ class TencentLobbyScene {
 
         const gy = CONFIG.TENCENT.GROUND_Y;
 
-        for (const bgd of this.bgDecorations) {
-            assets.drawBgDecoration(ctx, bgd.x, bgd.y, bgd.type, bgd.alpha);
-        }
-
         for (const seg of this._groundSegments) {
             assets.drawTilePlatform(ctx, seg.x, gy, seg.w, 'ground');
             const tileH = 96;
@@ -716,14 +937,16 @@ class TencentLobbyScene {
             assets.drawTilePlatform(ctx, plat.x, plat.y, plat.w, ptype);
         }
 
-        for (const dec of this.decorations) {
-            const sp = assets.getSprite(dec.spriteKey);
-            if (sp && sp.image) {
-                ctx.drawImage(sp.image, dec.x, dec.y, dec.w, dec.h);
-            } else {
-                ctx.fillStyle = 'rgba(100,100,120,0.6)';
-                ctx.fillRect(dec.x, dec.y, dec.w, dec.h);
-            }
+        for (const mp of this.movingPlatforms) {
+            const mpType = mp.type || 'metal';
+            assets.drawTilePlatform(ctx, mp.x, mp.y, mp.w, mpType);
+            ctx.save();
+            ctx.shadowColor = '#4facfe';
+            ctx.shadowBlur = 8 + Math.sin(this._time * 3) * 4;
+            ctx.strokeStyle = 'rgba(79, 172, 254, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(mp.x, mp.y, mp.w, mp.h);
+            ctx.restore();
         }
 
         for (const hz of this.deadlyHazards) {
@@ -754,6 +977,39 @@ class TencentLobbyScene {
                 ctx.fillStyle = '#ffd700';
                 ctx.fillRect(prop.x, prop.y + floatY, prop.w, prop.h);
             }
+        }
+
+        for (const si of this.shieldItems) {
+            if (si.collected) continue;
+            const floatY = Math.sin(this._time * 2.5 + si.floatPhase) * 10;
+            const drawX = si.x;
+            const drawY = si.y + floatY;
+            ctx.save();
+            const pulse = 0.7 + Math.sin(this._time * 4) * 0.3;
+            ctx.shadowColor = '#00ddff';
+            ctx.shadowBlur = 20 * pulse;
+            ctx.fillStyle = 'rgba(0,180,255,0.9)';
+            ctx.beginPath();
+            ctx.roundRect(drawX, drawY, si.w, si.h, 8);
+            ctx.fill();
+            ctx.strokeStyle = '#88eeff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(drawX + si.w/2, drawY + 8);
+            ctx.lineTo(drawX + si.w - 8, drawY + 16);
+            ctx.lineTo(drawX + si.w - 10, drawY + si.h - 10);
+            ctx.lineTo(drawX + si.w/2, drawY + si.h - 6);
+            ctx.lineTo(drawX + 10, drawY + si.h - 10);
+            ctx.lineTo(drawX + 8, drawY + 16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        for (const rv of this.rangedViruses) {
+            rv.render(this.renderer);
         }
 
         for (const virus of this.viruses) {
@@ -806,7 +1062,7 @@ class TencentLobbyScene {
 
         this.particles.render(ctx);
 
-        this.hud.render(ctx, null, 0, 'tencent');
+        this.hud.render(ctx, this.player.stamina, CONFIG.PLAYER.MAX_STAMINA, 'tencent', this.player.shieldTimer || 0);
 
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,0.5)';

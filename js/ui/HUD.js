@@ -16,10 +16,13 @@ class HUD {
         this.propSlots = [];
     }
 
-    render(ctx, stamina, staminaMax, mode = 'tencent') {
+    render(ctx, stamina, staminaMax, mode = 'tencent', shieldTime = 0) {
         this._time += 0.016;
         if (stamina !== null && stamina !== undefined && staminaMax > 0) {
             this._renderStaminaBar(ctx, stamina, staminaMax);
+        }
+        if (shieldTime > 0) {
+            this._renderShieldIcon(ctx, shieldTime);
         }
         if (mode === 'tencent') {
             this._renderPropSlots(ctx);
@@ -136,6 +139,43 @@ class HUD {
                 }
             }
         }
+    }
+
+    _renderShieldIcon(ctx, shieldTime) {
+        const x = 320, y = 22;
+        const size = 42;
+        const pulse = 0.8 + Math.sin(this._time * 5) * 0.2;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,200,255,' + pulse + ')';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = 'rgba(0,30,60,0.8)';
+        ctx.strokeStyle = 'rgba(100,220,255,' + (0.6 + pulse * 0.3) + ')';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(x, y, size, size, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#66ddff';
+        ctx.beginPath();
+        const cx = x + size/2, cy = y + size/2;
+        ctx.moveTo(cx, cy - 12);
+        ctx.lineTo(cx + 10, cy - 6);
+        ctx.lineTo(cx + 10, cy + 4);
+        ctx.lineTo(cx, cy + 12);
+        ctx.lineTo(cx - 10, cy + 4);
+        ctx.lineTo(cx - 10, cy - 6);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const timeText = shieldTime === Infinity ? '∞' : shieldTime.toFixed(1) + 's';
+        ctx.fillText(timeText, x + size + 8, cy);
+        ctx.restore();
     }
 
     _renderBatteryCounter(ctx) {
