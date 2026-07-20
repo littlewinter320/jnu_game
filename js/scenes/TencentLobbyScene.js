@@ -26,6 +26,12 @@ class TencentLobbyScene {
         this._bgBlend = 0;
         this._groundSegments = [];
         this._lastVirusWarn = 0;
+
+        this.penguin = null;
+        this.penguinFixed = false;
+        this.dialogueSystem = null;
+        this.storyPhase = 'intro';
+        this.storyDone = false;
     }
 
     enter(data) {
@@ -41,6 +47,9 @@ class TencentLobbyScene {
         this.exitMessageTimer = 0;
         this.currentAreaIdx = 0;
         this._bgBlend = 0;
+        this.penguinFixed = false;
+        this.storyPhase = 'intro';
+        this.storyDone = false;
         this.particles.clear();
 
         const px = CONFIG.TENCENT.PLAYER_START_X;
@@ -51,11 +60,41 @@ class TencentLobbyScene {
         this.player.onGround = false;
         this.player.stamina = CONFIG.PLAYER.MAX_STAMINA;
         this.player.invincibleTimer = 0;
+        this.player.state = 'idle';
+        this.player.facingRight = true;
+
+        this.penguin = {
+            x: 80,
+            y: CONFIG.TENCENT.GROUND_Y - 230,
+            w: 160,
+            h: 200
+        };
 
         this._buildLevel();
+        this._initDialogue();
         this.hud = new HUD();
         this.currentAreaName = CONFIG.TENCENT.AREA_NAMES[0];
         this.audio.playBGM('TENCENT');
+    }
+
+    _initDialogue() {
+        this.dialogueSystem = {
+            active: true,
+            currentLine: 0,
+            lines: [
+                { speaker: 'penguin', text: '哔...哔...系统故障...需要帮助...' },
+                { speaker: 'player', text: '企鹅先生！你怎么了？' },
+                { speaker: 'penguin', text: '我的6个核心模块散落在大楼各处...' },
+                { speaker: 'penguin', text: '微信、QQ、游戏、云、内容、技术...' },
+                { speaker: 'penguin', text: '请帮我找回它们，修复我的系统！' },
+                { speaker: 'player', text: '包在我身上！我这就去找回所有模块！' }
+            ],
+            lineTimer: 0,
+            lineDuration: 0.05,
+            charIndex: 0,
+            waitingForInput: false,
+            justCompleted: false
+        };
     }
 
     _buildLevel() {
@@ -87,37 +126,56 @@ class TencentLobbyScene {
 
         const platLayout = CONFIG.TENCENT.PLATFORM_LAYOUT;
         const platH = 50;
-        for (const pl of platLayout) {
+        const platTypes = ['platform', 'metal', 'tech', 'thin', 'semisolid'];
+        for (let i = 0; i < platLayout.length; i++) {
+            const pl = platLayout[i];
             const pw = pl.w * ts;
+            const ptype = platTypes[i % platTypes.length];
             this.platforms.push({
                 x: pl.x, y: pl.y, w: pw, h: platH,
                 isGround: false, isSolid: true,
-                type: pl.type || 'platform'
+                type: pl.type || ptype
             });
         }
 
-        const decTypes = [
+        const specialPlatforms = [
+            { x: 600, y: 850, w: 3, type: 'metal' },
+            { x: 1700, y: 720, w: 2, type: 'tech' },
+            { x: 4000, y: 480, w: 3, type: 'thin' },
+            { x: 6800, y: 480, w: 2, type: 'semisolid' },
+            { x: 8500, y: 750, w: 4, type: 'metal' },
+            { x: 11000, y: 500, w: 3, type: 'tech' },
+            { x: 13000, y: 750, w: 4, type: 'platform' }
+        ];
+        for (const sp of specialPlatforms) {
+            this.platforms.push({
+                x: sp.x, y: sp.y, w: sp.w * ts, h: platH,
+                isGround: false, isSolid: true, type: sp.type
+            });
+        }
+
+        const limitedDecTypes = [
             { key: 'OBS_CONES', w: 50, h: 60, yOff: -60 },
             { key: 'OBS_WARNING_LIGHT', w: 45, h: 70, yOff: -70 },
-            { key: 'OBS_BARRIER_FULL', w: 70, h: 90, yOff: -90 },
-            { key: 'OBS_HIGH_ARCADE', w: 80, h: 140, yOff: -140 },
-            { key: 'OBS_HIGH_GLASS', w: 75, h: 130, yOff: -130 },
-            { key: 'OBS_HIGH_PIPES', w: 80, h: 140, yOff: -140 },
-            { key: 'OBS_LOW_BLOCKS', w: 90, h: 40, yOff: -40 },
-            { key: 'OBS_LOW_FOLDERS', w: 80, h: 50, yOff: -50 },
-            { key: 'OBS_LOW_SERVERS', w: 100, h: 45, yOff: -45 },
             { key: 'OBS_MACHINERY', w: 100, h: 110, yOff: -110 },
-            { key: 'OBS_HIGH_ICE', w: 80, h: 140, yOff: -140 },
-            { key: 'OBS_HIGH_NEWS', w: 80, h: 150, yOff: -150 },
-            { key: 'OBS_HIGH_WALL', w: 70, h: 160, yOff: -160 }
+            { key: 'OBS_HIGH_PIPES', w: 80, h: 140, yOff: -140 },
+            { key: 'OBS_LOW_SERVERS', w: 100, h: 45, yOff: -45 }
         ];
 
-        for (let dx = 600; dx < ll - 600; dx += 350 + Math.random() * 300) {
-            const onPlat = Math.random() < 0.35;
-            const dec = decTypes[Math.floor(Math.random() * decTypes.length)];
+        const decPositions = [
+            { x: 700, onPlat: false },
+            { x: 2500, onPlat: false },
+            { x: 4800, onPlat: true },
+            { x: 7200, onPlat: false },
+            { x: 9800, onPlat: true }
+        ];
+
+        for (let i = 0; i < decPositions.length; i++) {
+            const dp = decPositions[i];
+            const dec = limitedDecTypes[i % limitedDecTypes.length];
             let dy;
-            if (onPlat) {
-                const nearPlats = this.platforms.filter(p => !p.isGround && Math.abs(p.x + p.w/2 - dx) < 150);
+            if (dp.onPlat) {
+                const nearPlats = this.platforms.filter(p => !p.isGround && Math.abs(p.x + p.w/2 - dp.x) < 200);
                 if (nearPlats.length > 0) {
                     const pl = nearPlats[0];
                     dy = pl.y + dec.yOff;
@@ -128,7 +186,23 @@ class TencentLobbyScene {
                 dy = gy + dec.yOff;
             }
             this.decorations.push({
-                x: dx, y: dy, w: dec.w, h: dec.h, spriteKey: dec.key
+                x: dp.x, y: dy, w: dec.w, h: dec.h, spriteKey: dec.key
+            });
+        }
+
+        this.bgDecorations = [];
+        const bgDecoTypes = ['building_s', 'building_m', 'building_t', 'tower'];
+        for (let bx = 500; bx < ll - 500; bx += 800 + Math.random() * 400) {
+            const type = bgDecoTypes[Math.floor(Math.random() * bgDecoTypes.length)];
+            const sizes = { building_s: 200, building_m: 250, building_t: 220, tower: 180 };
+            const heights = { building_s: 300, building_m: 350, building_t: 380, tower: 400 };
+            this.bgDecorations.push({
+                x: bx,
+                y: gy - heights[type],
+                w: sizes[type],
+                h: heights[type],
+                type: type,
+                alpha: 0.15 + Math.random() * 0.1
             });
         }
 
@@ -139,12 +213,13 @@ class TencentLobbyScene {
         ];
 
         const hazardPositions = [
-            { x: 1800, onPlat: false },
-            { x: 3800, onPlat: true },
-            { x: 5800, onPlat: false },
-            { x: 7600, onPlat: true },
-            { x: 9400, onPlat: false },
-            { x: 11400, onPlat: true }
+            { x: 2200, onPlat: false },
+            { x: 3500, onPlat: true },
+            { x: 5200, onPlat: false },
+            { x: 7000, onPlat: true },
+            { x: 8800, onPlat: false },
+            { x: 10500, onPlat: true },
+            { x: 12500, onPlat: false }
         ];
 
         for (const hp of hazardPositions) {
@@ -168,19 +243,20 @@ class TencentLobbyScene {
 
         CONFIG.TENCENT.PROP_TARGETS.forEach((pt) => {
             this.props.push({
-                x: pt.x, y: gy - 200 - Math.random() * 80,
+                x: pt.x, y: gy - 220 - Math.random() * 100,
                 w: 58, h: 58, spriteKey: pt.key, area: pt.area,
                 collected: false, floatPhase: Math.random() * Math.PI * 2
             });
         });
 
         const virusPositions = [
-            { x: 1500, y: gy - 80 },
-            { x: 3500, y: gy - 80 },
-            { x: 5500, y: gy - 80 },
-            { x: 7500, y: gy - 80 },
-            { x: 9500, y: gy - 80 },
-            { x: 11500, y: gy - 80 }
+            { x: 1800, y: gy - 80 },
+            { x: 3200, y: gy - 80 },
+            { x: 5000, y: gy - 80 },
+            { x: 6800, y: gy - 80 },
+            { x: 8600, y: gy - 80 },
+            { x: 10400, y: gy - 80 },
+            { x: 12000, y: gy - 80 }
         ];
         for (const vp of virusPositions) {
             this.viruses.push(new Virus(vp.x, vp.y));
@@ -196,7 +272,165 @@ class TencentLobbyScene {
         this.renderer.shake(15, 0.4);
     }
 
+    _advanceDialogue() {
+        if (!this.dialogueSystem || !this.dialogueSystem.active) return;
+        const ds = this.dialogueSystem;
+        if (ds.waitingForInput) {
+            ds.currentLine++;
+            ds.charIndex = 0;
+            ds.lineTimer = 0;
+            ds.waitingForInput = false;
+            ds.justCompleted = false;
+            if (ds.currentLine >= ds.lines.length) {
+                ds.active = false;
+                this.storyPhase = 'playing';
+                this.storyDone = true;
+            }
+        }
+    }
+
+    _drawDialogue(ctx) {
+        if (!this.dialogueSystem || !this.dialogueSystem.active) return;
+        const ds = this.dialogueSystem;
+        const line = ds.lines[ds.currentLine];
+        if (!line) return;
+
+        const w = CONFIG.CANVAS_WIDTH;
+        const h = CONFIG.CANVAS_HEIGHT;
+
+        let boxX, boxY, speakerName;
+        const boxW = 560;
+        const boxH = 120;
+
+        const playerScreenX = this.player.x - this.cameraX;
+        const penguinScreenX = this.penguin.x - this.cameraX;
+
+        if (line.speaker === 'penguin') {
+            boxX = penguinScreenX - boxW / 2 + this.penguin.w / 2;
+            boxY = this.penguin.y - boxH - 30;
+            speakerName = '企鹅';
+        } else {
+            boxX = playerScreenX - boxW / 2 + this.player.w / 2;
+            boxY = this.player.y - boxH - 30;
+            speakerName = this.gender === 'male' ? '男工程师' : '女工程师';
+        }
+
+        boxX = Math.max(40, Math.min(w - boxW - 40, boxX));
+        boxY = Math.max(40, boxY);
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(10, 20, 40, 0.92)';
+        ctx.strokeStyle = '#4facfe';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#4facfe';
+        ctx.beginPath();
+        if (line.speaker === 'penguin') {
+            ctx.moveTo(penguinScreenX + this.penguin.w/2, this.penguin.y - 5);
+            ctx.lineTo(penguinScreenX + this.penguin.w/2 - 15, boxY + boxH);
+            ctx.lineTo(penguinScreenX + this.penguin.w/2 + 15, boxY + boxH);
+        } else {
+            ctx.moveTo(playerScreenX + this.player.w/2, this.player.y - 5);
+            ctx.lineTo(playerScreenX + this.player.w/2 - 15, boxY + boxH);
+            ctx.lineTo(playerScreenX + this.player.w/2 + 15, boxY + boxH);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#4facfe';
+        ctx.font = 'bold 20px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText(speakerName, boxX + 20, boxY + 32);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '22px "Courier New"';
+        const displayText = line.text.substring(0, ds.charIndex);
+        this._wrapText(ctx, displayText, boxX + 20, boxY + 60, boxW - 40, 30);
+
+        if (ds.waitingForInput) {
+            const blink = Math.sin(this._time * 4) > 0;
+            if (blink) {
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = '18px "Courier New"';
+                ctx.textAlign = 'right';
+                ctx.fillText('▼ 按空格继续', boxX + boxW - 20, boxY + boxH - 15);
+            }
+        }
+        ctx.restore();
+    }
+
+    _wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split('');
+        let line = '';
+        let curY = y;
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n];
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && n > 0) {
+                ctx.fillText(line, x, curY);
+                line = words[n];
+                curY += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, x, curY);
+    }
+
+    _updateDialogue(dt) {
+        if (!this.dialogueSystem || !this.dialogueSystem.active) return;
+        const ds = this.dialogueSystem;
+        const line = ds.lines[ds.currentLine];
+        if (!line) return;
+
+        if (!ds.waitingForInput) {
+            ds.lineTimer += dt;
+            if (ds.lineTimer >= ds.lineDuration) {
+                ds.lineTimer = 0;
+                ds.charIndex++;
+                if (ds.charIndex >= line.text.length) {
+                    ds.charIndex = line.text.length;
+                    ds.waitingForInput = true;
+                }
+            }
+        }
+
+        if (ds.waitingForInput) {
+            if (this.input.isJustPressed(CONFIG.KEYS.JUMP) || this.input.isJustPressed(CONFIG.KEYS.ENTER) ||
+                this.input.isJustPressed(CONFIG.KEYS.W) || this.input.isJustPressed(CONFIG.KEYS.UP)) {
+                this._advanceDialogue();
+                this.audio.playSFX('BUTTON_CLICK');
+            }
+        }
+    }
+
+    _checkPenguinProximity() {
+        if (!this.storyDone) return;
+        const p = this.player;
+        const pg = this.penguin;
+
+        const dx = (p.x + p.w/2) - (pg.x + pg.w/2);
+        const dy = (p.y + p.h/2) - (pg.y + pg.h/2);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < 180 && this.collectedProps.length < 6 && !this.dialogueSystem?.active) {
+            if (!this._hintTimer || this._hintTimer <= 0) {
+                this._hintMsg = `还需要收集 ${6 - this.collectedProps.length} 个模块才能修复企鹅！`;
+                this._hintTimer = 2.5;
+            }
+        }
+    }
+
     update(dt) {
+        this._time += dt;
+        if (this._hintTimer > 0) this._hintTimer -= dt;
+
+        this._updateDialogue(dt);
+
         if (this.gameOver || this.victory) {
             this.endTimer += dt;
             this.particles.update(dt);
@@ -216,7 +450,14 @@ class TencentLobbyScene {
             return;
         }
 
-        this._time += dt;
+        if (this.dialogueSystem?.active) {
+            this.player.vx = 0;
+            this.player.vy = 0;
+            this.player.updateAnimation(dt);
+            this.particles.update(dt);
+            return;
+        }
+
         const p = this.player;
         const assets = this.assets;
 
@@ -328,41 +569,42 @@ class TencentLobbyScene {
             }
         }
 
+        if (this.collectedProps.length >= 6 && !this.penguinFixed) {
+            this.penguinFixed = true;
+            this._hintMsg = '企鹅修复了！快回到企鹅旁边完成任务！';
+            this._hintTimer = 4;
+            this.audio.playSFX('VICTORY');
+        }
+
+        this._checkPenguinProximity();
+
         if (p.onGround) {
             p.stamina = Math.min(CONFIG.PLAYER.MAX_STAMINA, p.stamina + CONFIG.PLAYER.STAMINA_RECOVER_RATE * dt);
         }
 
         this.exitUnlocked = this.collectedProps.length >= 6;
-        const exitX = CONFIG.TENCENT.EXIT_X;
+        const exitX = this.penguin.x;
+        const exitY = this.penguin.y;
         const exitHb = {
-            x: exitX,
-            y: CONFIG.TENCENT.GROUND_Y - CONFIG.TENCENT.EXIT_HEIGHT,
-            w: CONFIG.TENCENT.EXIT_WIDTH,
-            h: CONFIG.TENCENT.EXIT_HEIGHT
+            x: exitX - 40,
+            y: exitY,
+            w: this.penguin.w + 80,
+            h: this.penguin.h + 50
         };
 
-        if (CollisionSystem.aabb(playerHb, exitHb)) {
-            if (this.exitUnlocked) {
-                if (!this.victory) {
-                    this.victory = true;
-                    this.audio.playSFX('VICTORY');
-                    p.playVictory();
-                    for (let i = 0; i < 8; i++) {
-                        setTimeout(() => this.particles.emitCollect(
-                            exitX + CONFIG.TENCENT.EXIT_WIDTH/2 + (Math.random()-0.5)*200,
-                            CONFIG.TENCENT.GROUND_Y - CONFIG.TENCENT.EXIT_HEIGHT/2 + (Math.random()-0.5)*150
-                        ), i * 120);
-                    }
+        if (this.penguinFixed && CollisionSystem.aabb(playerHb, exitHb)) {
+            if (!this.victory) {
+                this.victory = true;
+                this.audio.playSFX('VICTORY');
+                p.playVictory();
+                this._showEndingDialogue = true;
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => this.particles.emitCollect(
+                        exitX + this.penguin.w/2 + (Math.random()-0.5)*200,
+                        exitY + this.penguin.h/2 + (Math.random()-0.5)*150
+                    ), i * 120);
                 }
-            } else {
-                this.showExitMessage = true;
-                this.exitMessageTimer = 2.0;
             }
-        }
-
-        if (this.exitMessageTimer > 0) {
-            this.exitMessageTimer -= dt;
-            if (this.exitMessageTimer <= 0) this.showExitMessage = false;
         }
 
         const targetCamX = p.x - CONFIG.TENCENT.CAMERA_OFFSET_X;
@@ -444,6 +686,10 @@ class TencentLobbyScene {
 
         const gy = CONFIG.TENCENT.GROUND_Y;
 
+        for (const bgd of this.bgDecorations) {
+            assets.drawBgDecoration(ctx, bgd.x, bgd.y, bgd.type, bgd.alpha);
+        }
+
         for (const seg of this._groundSegments) {
             assets.drawTilePlatform(ctx, seg.x, gy, seg.w, 'ground');
             const tileH = 96;
@@ -466,7 +712,7 @@ class TencentLobbyScene {
 
         for (const plat of this.platforms) {
             if (plat.isGround) continue;
-            const ptype = plat.type === 'semisolid' ? 'semisolid' : 'platform';
+            const ptype = plat.type || 'platform';
             assets.drawTilePlatform(ctx, plat.x, plat.y, plat.w, ptype);
         }
 
@@ -514,45 +760,45 @@ class TencentLobbyScene {
             virus.render(this.renderer);
         }
 
-        const exitX = CONFIG.TENCENT.EXIT_X;
-        const exitY = gy - CONFIG.TENCENT.EXIT_HEIGHT;
-        const exitW = CONFIG.TENCENT.EXIT_WIDTH;
-        const exitH = CONFIG.TENCENT.EXIT_HEIGHT;
-        const lightColor = this.exitUnlocked ? 'rgba(0,255,100,' : 'rgba(255,50,50,';
+        const penguinKey = this.penguinFixed ? 'UI_PENGUIN_FIXED' : 'UI_PENGUIN_BROKEN';
+        const penguinSprite = assets.getSprite(penguinKey);
+        if (penguinSprite && penguinSprite.image) {
+            const bobY = Math.sin(this._time * 2) * 3;
+            ctx.drawImage(penguinSprite.image, this.penguin.x, this.penguin.y + bobY, this.penguin.w, this.penguin.h);
+        } else {
+            ctx.fillStyle = this.penguinFixed ? '#00ff88' : '#888';
+            ctx.fillRect(this.penguin.x, this.penguin.y, this.penguin.w, this.penguin.h);
+        }
 
-        const gradient = ctx.createRadialGradient(
-            exitX + exitW/2, exitY + exitH/2, 0,
-            exitX + exitW/2, exitY + exitH/2, CONFIG.TENCENT.EXIT_LIGHT_RADIUS
-        );
-        const pulse = 0.3 + Math.sin(this._time * 3) * 0.15;
-        gradient.addColorStop(0, lightColor + (this.exitUnlocked ? 0.4 : 0.35) + ')');
-        gradient.addColorStop(0.5, lightColor + pulse + ')');
-        gradient.addColorStop(1, lightColor + '0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(
-            exitX - CONFIG.TENCENT.EXIT_LIGHT_RADIUS,
-            exitY - 100,
-            exitW + CONFIG.TENCENT.EXIT_LIGHT_RADIUS * 2,
-            exitH + 200
-        );
+        if (this.penguinFixed) {
+            const exitX = this.penguin.x + this.penguin.w/2;
+            const exitY = this.penguin.y + this.penguin.h/2;
+            const lightColor = 'rgba(100,255,150,';
+            const gradient = ctx.createRadialGradient(exitX, exitY, 0, exitX, exitY, 300);
+            const pulse = 0.3 + Math.sin(this._time * 3) * 0.15;
+            gradient.addColorStop(0, lightColor + '0.5)');
+            gradient.addColorStop(0.5, lightColor + pulse + ')');
+            gradient.addColorStop(1, lightColor + '0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(this.penguin.x - 200, this.penguin.y - 100, this.penguin.w + 400, this.penguin.h + 200);
 
-        ctx.fillStyle = this.exitUnlocked ? 'rgba(0,255,100,0.6)' : 'rgba(255,50,50,0.5)';
-        ctx.fillRect(exitX, exitY, exitW, 20);
-        ctx.fillRect(exitX, exitY, 20, exitH);
-        ctx.fillRect(exitX + exitW - 20, exitY, 20, exitH);
-
-        const doorGlow = this.exitUnlocked ? 'rgba(100,255,150,0.3)' : 'rgba(255,100,100,0.2)';
-        ctx.fillStyle = doorGlow;
-        ctx.fillRect(exitX + 20, exitY + 20, exitW - 40, exitH - 40);
-
-        ctx.save();
-        ctx.fillStyle = this.exitUnlocked ? '#00ff64' : '#ff3232';
-        ctx.font = 'bold 20px "Courier New"';
-        ctx.textAlign = 'center';
-        ctx.shadowColor = this.exitUnlocked ? '#00ff64' : '#ff3232';
-        ctx.shadowBlur = 10;
-        ctx.fillText(this.exitUnlocked ? '✓ 出口已开启' : '✗ 需要收集6个道具', exitX + exitW/2, exitY - 20);
-        ctx.restore();
+            ctx.save();
+            ctx.fillStyle = '#00ff88';
+            ctx.font = 'bold 20px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#00ff88';
+            ctx.shadowBlur = 10;
+            ctx.fillText('★ 走近企鹅完成任务 ★', exitX, this.penguin.y - 25);
+            ctx.restore();
+        } else {
+            const exitX = this.penguin.x + this.penguin.w/2;
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,150,50,0.8)';
+            ctx.font = 'bold 18px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText('需要收集6个模块', exitX, this.penguin.y - 15);
+            ctx.restore();
+        }
 
         if (this.player) this.player.render(this.renderer);
 
@@ -597,24 +843,26 @@ class TencentLobbyScene {
         ctx.textAlign = 'left';
         ctx.fillText('WASD/方向键: 移动', 45, h - 65);
         ctx.fillText('空格/W/↑: 跳跃(可二段跳)', 45, h - 42);
-        ctx.fillText('S/↓: 下蹲 | 避开病毒和红色陷阱!', 45, h - 19);
+        ctx.fillText('S/↓: 下蹲 | 帮企鹅找回6个模块!', 45, h - 19);
         ctx.restore();
 
-        if (this.showExitMessage) {
-            const msgAlpha = Math.min(1, this.exitMessageTimer * 3);
+        if (this._hintTimer > 0 && this._hintMsg) {
+            const msgAlpha = Math.min(1, this._hintTimer * 2);
             ctx.save();
             ctx.globalAlpha = msgAlpha;
-            ctx.fillStyle = 'rgba(0,0,0,0.7)';
-            ctx.fillRect(w/2 - 280, h/2 - 50, 560, 100);
-            ctx.strokeStyle = '#ff4444';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(w/2 - 280, h/2 - 50, 560, 100);
-            ctx.fillStyle = '#ff6666';
-            ctx.font = 'bold 24px "Courier New"';
+            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+            ctx.fillRect(w/2 - 250, 100, 500, 60);
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(w/2 - 250, 100, 500, 60);
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 20px "Courier New"';
             ctx.textAlign = 'center';
-            ctx.fillText('⚠ 出口被锁定！请先收集全部6个事业群道具！', w/2, h/2 + 8);
+            ctx.fillText(this._hintMsg, w/2, 138);
             ctx.restore();
         }
+
+        this._drawDialogue(ctx);
 
         if (this.gameOver) {
             ctx.fillStyle = 'rgba(100,0,0,0.3)';

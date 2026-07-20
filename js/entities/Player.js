@@ -17,6 +17,7 @@ class Player extends Entity {
         this.invincibleTimer = 0;
         this.pickupTimer = 0;
         this.hurtTimer = 0;
+        this.landingTimer = 0;
 
         this._refreshCharInfo();
     }
@@ -29,7 +30,6 @@ class Player extends Entity {
         const info = window.Game?.assets?.getAnimInfo?.(gender, 'idle');
         const fw = info?.frameWidth || 92;
         const fh = info?.frameHeight || 79;
-        // 让渲染高度接近碰撞盒高度(110)，sprite略大一些更自然
         const scale = CONFIG.PLAYER.HEIGHT / fh * 1.15;
         return { w: fw * scale, h: fh * scale, fw, fh, scale };
     }
@@ -41,12 +41,14 @@ class Player extends Entity {
             this.canDoubleJump = true;
             this.state = 'jump';
             this.animFrame = 0;
+            this.animTimer = 0;
             return 'jump';
         } else if (this.canDoubleJump) {
             this.vy = CONFIG.PLAYER.DOUBLE_JUMP_FORCE;
             this.canDoubleJump = false;
             this.state = 'jump';
             this.animFrame = 0;
+            this.animTimer = 0;
             return 'doubleJump';
         }
         return null;
@@ -58,6 +60,7 @@ class Player extends Entity {
             this.state = 'crouch';
             this.h = this._charInfo.h * 0.6;
             this.animFrame = 0;
+            this.animTimer = 0;
         } else if (!active && this.state === 'crouch') {
             this.h = this._charInfo.h;
             this.state = this.onGround ? 'idle' : 'airborne';
@@ -75,6 +78,8 @@ class Player extends Entity {
         this.vy = 0;
         this.state = 'landing';
         this.animFrame = 0;
+        this.animTimer = 0;
+        this.landingTimer = 0;
         this.h = this._charInfo.h;
     }
 
@@ -86,12 +91,14 @@ class Player extends Entity {
         this.hurtTimer = 0.4;
         this.state = 'hurt';
         this.animFrame = 0;
+        this.animTimer = 0;
         return true;
     }
 
     die() {
         this.state = 'death';
         this.animFrame = 0;
+        this.animTimer = 0;
         this.vx = 0;
         this.vy = 0;
     }
@@ -103,6 +110,7 @@ class Player extends Entity {
     playPickup() {
         this.state = 'pickup';
         this.animFrame = 0;
+        this.animTimer = 0;
         this.pickupTimer = 0.5;
         this.vx = 0;
     }
@@ -110,13 +118,14 @@ class Player extends Entity {
     playVictory() {
         this.state = 'victory';
         this.animFrame = 0;
+        this.animTimer = 0;
         this.vx = 0;
     }
 
     _resolveAnimName() {
         switch (this.state) {
             case 'idle':     return 'idle';
-            case 'run':      return this.facingRight ? 'run_right' : 'run_left';
+            case 'run':      return 'run_right';
             case 'jump':     return 'jump_start';
             case 'airborne': return 'airborne';
             case 'landing':  return 'landing';
@@ -129,6 +138,26 @@ class Player extends Entity {
             case 'victory':  return 'victory';
             default:         return 'idle';
         }
+    }
+
+    _getAnimSpeed(animName, info) {
+        if (info && info.animSpeed) return info.animSpeed;
+        const defaults = {
+            idle: 0.2,
+            run_right: 0.1,
+            jump_start: 0.08,
+            airborne: 0.15,
+            landing: 0.08,
+            crouch: 0.2,
+            crouch_walk: 0.12,
+            hurt: 0.12,
+            knockback: 0.12,
+            death: 0.15,
+            pickup: 0.12,
+            operate: 0.15,
+            victory: 0.15
+        };
+        return defaults[animName] || 0.12;
     }
 
     update(dt) {
@@ -147,19 +176,24 @@ class Player extends Entity {
             this.state !== 'operate' && this.state !== 'pickup') {
             if (!this.onGround) {
                 if (this.vy < 0) {
-                    this.state = (this.state === 'jump') ? 'jump' : 'airborne';
+                    this.state = 'jump';
                 } else {
                     this.state = 'airborne';
                 }
             } else if (this.state === 'airborne' || this.state === 'jump') {
                 this.state = 'landing';
                 this.animFrame = 0;
+                this.animTimer = 0;
+                this.landingTimer = 0;
             } else if (this.state === 'landing') {
+                this.landingTimer += dt;
                 const info = window.Game?.assets?.getAnimInfo?.(this.gender, 'landing');
                 const fc = info?.frames?.length || 4;
-                if (this.animFrame >= fc - 1) {
+                const frameDur = this._getAnimSpeed('landing', info);
+                if (this.landingTimer >= fc * frameDur) {
                     this.state = this.crouching ? 'crouch' : (moving ? 'run' : 'idle');
                     this.animFrame = 0;
+                    this.animTimer = 0;
                 }
             } else if (this.crouching) {
                 this.state = moving ? 'crouch' : 'crouch';
@@ -172,20 +206,7 @@ class Player extends Entity {
         const info = window.Game?.assets?.getAnimInfo?.(this.gender, animName);
         const frameCount = info?.frames?.length || 4;
         const loop = info?.loop !== false;
-
-        switch (this.state) {
-            case 'idle':     this.animSpeed = 0.2;  break;
-            case 'run':      this.animSpeed = 0.08; break;
-            case 'jump':     this.animSpeed = 0.1;  break;
-            case 'airborne': this.animSpeed = 0.15; break;
-            case 'landing':  this.animSpeed = 0.08; break;
-            case 'crouch':   this.animSpeed = moving ? 0.1 : 0.25; break;
-            case 'hurt':     this.animSpeed = 0.12; break;
-            case 'death':    this.animSpeed = 0.15; break;
-            case 'pickup':   this.animSpeed = 0.12; break;
-            case 'victory':  this.animSpeed = 0.15; break;
-            default:         this.animSpeed = 0.12; break;
-        }
+        this.animSpeed = this._getAnimSpeed(animName, info);
 
         this.animTimer += dt;
         if (this.animTimer >= this.animSpeed) {
@@ -209,25 +230,23 @@ class Player extends Entity {
             if (this.pickupTimer <= 0) this.state = 'idle';
         }
 
+        if (this.state === 'landing') {
+            this.landingTimer += dt;
+            const info = window.Game?.assets?.getAnimInfo?.(this.gender, 'landing');
+            const fc = info?.frames?.length || 4;
+            const frameDur = this._getAnimSpeed('landing', info);
+            if (this.landingTimer >= fc * frameDur) {
+                this.state = this.crouching ? 'crouch' : 'run';
+                this.animFrame = 0;
+                this.animTimer = 0;
+            }
+        }
+
         const animName = this._resolveAnimName();
         const info = window.Game?.assets?.getAnimInfo?.(this.gender, animName);
         const frameCount = info?.frames?.length || 4;
         const loop = info?.loop !== false;
-
-        const moving = Math.abs(this.vx) > 10;
-        switch (this.state) {
-            case 'idle':     this.animSpeed = 0.2;  break;
-            case 'run':      this.animSpeed = 0.08; break;
-            case 'jump':     this.animSpeed = 0.1;  break;
-            case 'airborne': this.animSpeed = 0.15; break;
-            case 'landing':  this.animSpeed = 0.08; break;
-            case 'crouch':   this.animSpeed = moving ? 0.1 : 0.25; break;
-            case 'hurt':     this.animSpeed = 0.12; break;
-            case 'death':    this.animSpeed = 0.15; break;
-            case 'pickup':   this.animSpeed = 0.12; break;
-            case 'victory':  this.animSpeed = 0.15; break;
-            default:         this.animSpeed = 0.12; break;
-        }
+        this.animSpeed = this._getAnimSpeed(animName, info);
 
         this.animTimer += dt;
         if (this.animTimer >= this.animSpeed) {
@@ -262,12 +281,7 @@ class Player extends Entity {
         const drawX = this.x + (this.w - drawW) / 2;
         const drawY = this.y + this.h - drawH + crouchOffset;
 
-        let flipX = false;
-        if (animName !== 'run_left' && animName !== 'run_right') {
-            flipX = !this.facingRight;
-        } else if (animName === 'run_left') {
-            flipX = true;
-        }
+        let flipX = !this.facingRight;
 
         if (assets && assets.charAnims?.[this.gender]?.[animName]) {
             assets.drawCharacter(ctx, this.gender, animName, drawX, drawY, this.animFrame, scale, flipX);

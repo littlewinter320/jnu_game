@@ -8,7 +8,6 @@ class XPengRunScene {
         this.gender = 'male';
         this.player = null;
         this.obstacles = [];
-        this.decorations = [];
         this.batteries = [];
         this.speed = CONFIG.XPENG.BASE_SPEED;
         this.stamina = CONFIG.PLAYER.MAX_STAMINA;
@@ -25,7 +24,6 @@ class XPengRunScene {
         this.jumpStartY = 0;
         this.crouchTimer = 0;
         this._obstacleTimer = 0;
-        this._decorationTimer = 0;
         this._batteryTimer = 3;
         this._speedTier = 0;
         this._heartbeatTimer = 0;
@@ -40,7 +38,6 @@ class XPengRunScene {
         this._time = 0;
         this.gender = data?.gender || 'male';
         this.obstacles = [];
-        this.decorations = [];
         this.batteries = [];
         this.speed = CONFIG.XPENG.BASE_SPEED;
         this.stamina = CONFIG.PLAYER.MAX_STAMINA;
@@ -53,9 +50,8 @@ class XPengRunScene {
         this.laneSwitchProgress = 1;
         this.jumpTimer = 0;
         this.crouchTimer = 0;
-        this._obstacleTimer = 1.2;
-        this._decorationTimer = 0.5;
-        this._batteryTimer = 2.5;
+        this._obstacleTimer = 3.5;
+        this._batteryTimer = 3;
         this._speedTier = 0;
         this._heartbeatTimer = 0;
         this._distanceTravelled = 0;
@@ -237,15 +233,10 @@ class XPengRunScene {
         if (this._obstacleTimer <= 0) {
             this._spawnObstacle();
             const speedFactor = this.speed / CONFIG.XPENG.BASE_SPEED;
-            const minGap = CONFIG.XPENG.OBSTACLE_SPAWN_MIN / speedFactor;
-            const maxGap = CONFIG.XPENG.OBSTACLE_SPAWN_MAX / speedFactor;
+            const isEarlyPhase = this._time < CONFIG.XPENG.EARLY_PHASE_DURATION;
+            const minGap = (isEarlyPhase ? CONFIG.XPENG.OBSTACLE_SPAWN_MIN_EARLY : CONFIG.XPENG.OBSTACLE_SPAWN_MIN) / speedFactor;
+            const maxGap = (isEarlyPhase ? CONFIG.XPENG.OBSTACLE_SPAWN_MAX_EARLY : CONFIG.XPENG.OBSTACLE_SPAWN_MAX) / speedFactor;
             this._obstacleTimer = minGap + Math.random() * (maxGap - minGap);
-        }
-
-        this._decorationTimer -= dt;
-        if (this._decorationTimer <= 0) {
-            this._spawnDecoration();
-            this._decorationTimer = 0.4 + Math.random() * 0.8;
         }
 
         this._batteryTimer -= dt;
@@ -274,14 +265,6 @@ class XPengRunScene {
                     this.renderer.shake(10, 0.3);
                     p.takeDamage(0);
                 }
-            }
-        }
-
-        for (let i = this.decorations.length - 1; i >= 0; i--) {
-            const dec = this.decorations[i];
-            dec.x -= moveAmount * (dec.bgLayer || 1);
-            if (dec.x + dec.w < -200) {
-                this.decorations.splice(i, 1);
             }
         }
 
@@ -351,38 +334,6 @@ class XPengRunScene {
         });
     }
 
-    _spawnDecoration() {
-        const laneIdx = Math.floor(Math.random() * (CONFIG.XPENG.LANES.length + 2));
-        const ly = laneIdx < CONFIG.XPENG.LANES.length ? CONFIG.XPENG.LANES[laneIdx].y : CONFIG.XPENG.GROUND_Y;
-
-        const decTypes = [
-            { key: 'OBS_CONES', w: 45, h: 55, yOff: -55, bgLayer: 1.0 },
-            { key: 'OBS_WARNING_LIGHT', w: 40, h: 65, yOff: -65, bgLayer: 1.0 },
-            { key: 'OBS_BARRIER_FULL', w: 65, h: 80, yOff: -80, bgLayer: 1.0 },
-            { key: 'OBS_GATE_FULL', w: 70, h: 85, yOff: -85, bgLayer: 0.9 },
-            { key: 'OBS_HIGH_ARCADE', w: 75, h: 130, yOff: -130, bgLayer: 0.85 },
-            { key: 'OBS_HIGH_GLASS', w: 70, h: 120, yOff: -120, bgLayer: 0.85 },
-            { key: 'OBS_HIGH_ICE', w: 75, h: 130, yOff: -130, bgLayer: 0.8 },
-            { key: 'OBS_HIGH_NEWS', w: 75, h: 140, yOff: -140, bgLayer: 0.8 },
-            { key: 'OBS_HIGH_PIPES', w: 75, h: 135, yOff: -135, bgLayer: 0.85 },
-            { key: 'OBS_HIGH_WALL', w: 65, h: 150, yOff: -150, bgLayer: 0.75 },
-            { key: 'OBS_LOW_SERVERS', w: 95, h: 42, yOff: -42, bgLayer: 1.0 },
-            { key: 'OBS_MACHINERY', w: 95, h: 100, yOff: -100, bgLayer: 0.9 },
-            { key: 'OBS_WALL_FULL', w: 60, h: 120, yOff: -120, bgLayer: 0.7 },
-            { key: 'OBS_SPIKE_FULL', w: 70, h: 40, yOff: -40, bgLayer: 1.0 }
-        ];
-
-        const d = decTypes[Math.floor(Math.random() * decTypes.length)];
-        const yOff = laneIdx >= CONFIG.XPENG.LANES.length ? d.yOff * 0.6 : d.yOff;
-        this.decorations.push({
-            x: CONFIG.CANVAS_WIDTH + 100 + Math.random() * 300,
-            y: ly + yOff,
-            w: d.w, h: d.h,
-            spriteKey: d.key, bgLayer: d.bgLayer,
-            isBackground: laneIdx >= CONFIG.XPENG.LANES.length
-        });
-    }
-
     _spawnBattery() {
         const laneIdx = Math.floor(Math.random() * CONFIG.XPENG.LANES.length);
         const lane = CONFIG.XPENG.LANES[laneIdx];
@@ -447,16 +398,6 @@ class XPengRunScene {
         ctx.fillStyle = roadGrad;
         ctx.fillRect(0, 500, w, gy + 100 - 500);
 
-        for (const dec of this.decorations.filter(d => d.isBackground)) {
-            const sp = assets.getSprite(dec.spriteKey);
-            if (sp && sp.image) {
-                ctx.save();
-                ctx.globalAlpha = 0.5 * dec.bgLayer;
-                ctx.drawImage(sp.image, dec.x, dec.y, dec.w * 0.7, dec.h * 0.7);
-                ctx.restore();
-            }
-        }
-
         for (let li = 0; li < CONFIG.XPENG.LANES.length; li++) {
             const lane = CONFIG.XPENG.LANES[li];
             const ly = lane.y + lane.h;
@@ -489,13 +430,6 @@ class XPengRunScene {
                 ctx.stroke();
                 ctx.setLineDash([]);
                 ctx.restore();
-            }
-        }
-
-        for (const dec of this.decorations.filter(d => !d.isBackground)) {
-            const sp = assets.getSprite(dec.spriteKey);
-            if (sp && sp.image) {
-                ctx.drawImage(sp.image, dec.x, dec.y, dec.w, dec.h);
             }
         }
 

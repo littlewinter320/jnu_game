@@ -115,6 +115,21 @@ class WinScene {
         ctx.font = 'bold 32px "Courier New"';
         ctx.fillText('评价: ' + rating.stars, w/2, by + 310);
 
+        if (this._data.level === 'tencent') {
+            const thanks = [
+                '🐧 太好了！我的系统恢复正常了！',
+                '感谢你找回了所有6个核心模块！',
+                '你是一位真正的卓越工程师！'
+            ];
+            ctx.fillStyle = '#90ee90';
+            ctx.font = '18px "Courier New"';
+            let ty = by + 360;
+            for (const line of thanks) {
+                ctx.fillText(line, w/2, ty);
+                ty += 24;
+            }
+        }
+
         const restartBtn = assets.getSprite('BTN_RESTART');
         if (restartBtn && restartBtn.image && this._btnBounds) {
             const b = this._btnBounds;

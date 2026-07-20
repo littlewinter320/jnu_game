@@ -341,6 +341,22 @@ class AssetLoader {
                 left:   { sx: 1224, sy: 292, sw: 140, sh: 34 },
                 mid:    { sx: 1400, sy: 292, sw: 180, sh: 34 },
                 right:  { sx: 2040, sy: 292, sw: 160, sh: 34 }
+            },
+            thin: {
+                left:   { sx: 1230, sy: 350, sw: 100, sh: 24 },
+                mid:    { sx: 1380, sy: 350, sw: 150, sh: 24 },
+                right:  { sx: 1850, sy: 350, sw: 100, sh: 24 },
+                single: { sx: 2000, sy: 350, sw: 80, sh: 24 }
+            },
+            metal: {
+                left:   { sx: 20, sy: 200, sw: 100, sh: 60 },
+                mid:    { sx: 140, sy: 200, sw: 160, sh: 60 },
+                right:  { sx: 800, sy: 200, sw: 100, sh: 60 }
+            },
+            tech: {
+                left:   { sx: 20, sy: 290, sw: 120, sh: 70 },
+                mid:    { sx: 160, sy: 290, sw: 180, sh: 70 },
+                right:  { sx: 900, sy: 290, sw: 110, sh: 70 }
             }
         };
 
@@ -348,7 +364,7 @@ class AssetLoader {
         const h = def.left.sh;
         const midW = def.mid.sw;
 
-        if (widthInPixels <= def.single?.sw + 20 && def.single) {
+        if (widthInPixels <= (def.single?.sw || 120) + 20 && def.single) {
             const s = def.single;
             const dw = widthInPixels;
             ctx.drawImage(img, s.sx, s.sy, s.sw, s.sh, Math.round(x), Math.round(y), Math.round(dw), h);
@@ -378,6 +394,93 @@ class AssetLoader {
 
         ctx.drawImage(img, def.right.sx, def.right.sy, def.right.sw, def.right.sh,
             Math.round(rightStart), Math.round(y), rightW, h);
+    }
+
+    drawPlatformModule(ctx, x, y, moduleType, alpha = 1) {
+        const entry = this.images.tiles?.PLATFORM_TILES;
+        if (!entry || entry.placeholder || !entry.image) return;
+        const img = entry.image;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        const MODULES = {
+            pillar: [
+                { sx: 400, sy: 200, sw: 60, sh: 60 },
+                { sx: 400, sy: 260, sw: 60, sh: 60 },
+                { sx: 400, sy: 320, sw: 60, sh: 60 }
+            ],
+            console: [
+                { sx: 500, sy: 70, sw: 120, sh: 80 }
+            ],
+            server: [
+                { sx: 600, sy: 200, sw: 80, sh: 100 }
+            ],
+            pipe_h: [
+                { sx: 300, sy: 180, sw: 100, sh: 30 }
+            ],
+            pipe_v: [
+                { sx: 350, sy: 70, sw: 30, sh: 100 }
+            ],
+            light: [
+                { sx: 700, sy: 70, sw: 40, sh: 40 }
+            ],
+            vent: [
+                { sx: 750, sy: 120, sw: 80, sh: 30 }
+            ],
+            panel: [
+                { sx: 550, sy: 290, sw: 100, sh: 70 }
+            ],
+            screen: [
+                { sx: 20, sy: 400, sw: 200, sh: 120 }
+            ],
+            desk: [
+                { sx: 250, sy: 400, sw: 150, sh: 80 }
+            ],
+            chair: [
+                { sx: 420, sy: 420, sw: 60, sh: 70 }
+            ],
+            plant: [
+                { sx: 500, sy: 400, sw: 70, sh: 100 }
+            ],
+            ac: [
+                { sx: 600, sy: 380, sw: 100, sh: 40 }
+            ],
+            board: [
+                { sx: 720, sy: 380, sw: 120, sh: 80 }
+            ]
+        };
+
+        const parts = MODULES[moduleType];
+        if (!parts) { ctx.restore(); return; }
+
+        for (const part of parts) {
+            ctx.drawImage(img, part.sx, part.sy, part.sw, part.sh,
+                Math.round(x), Math.round(y), part.sw, part.sh);
+        }
+        ctx.restore();
+    }
+
+    drawBgDecoration(ctx, x, y, decoType, alpha = 0.3) {
+        const entry = this.images.tiles?.PLATFORM_TILES;
+        if (!entry || entry.placeholder || !entry.image) return;
+        const img = entry.image;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        const DECOS = {
+            building_s: { sx: 20, sy: 550, sw: 200, sh: 300 },
+            building_m: { sx: 240, sy: 500, sw: 250, sh: 350 },
+            building_t: { sx: 520, sy: 480, sw: 220, sh: 380 },
+            tower:      { sx: 760, sy: 450, sw: 180, sh: 400 },
+            wall_tech:  { sx: 20, sy: 900, sw: 300, sh: 200 },
+            grid:       { sx: 340, sy: 880, sw: 200, sh: 150 }
+        };
+
+        const d = DECOS[decoType];
+        if (d) {
+            ctx.drawImage(img, d.sx, d.sy, d.sw, d.sh, Math.round(x), Math.round(y), d.sw, d.sh);
+        }
+        ctx.restore();
     }
 
     drawPlatformBuilding(ctx, x, y, w, h, style = 'tech') {
